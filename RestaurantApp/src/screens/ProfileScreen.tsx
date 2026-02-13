@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
@@ -10,16 +10,15 @@ import { Colors, Shadow } from '../utils/theme';
 const ProfileScreen = () => {
   const { user, logout } = useAuth();
   const { getUserBookings } = useBooking();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const bookings = getUserBookings(user?.id || '');
   const confirmed = bookings.filter(b => b.bookingStatus === 'confirmed').length;
   const totalPaid = bookings.filter(b => b.paymentStatus === 'paid').reduce((s, b) => s + b.totalAmount, 0);
 
-  const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: logout },
-    ]);
+  const handleLogout = async () => {
+    setShowLogoutModal(false);
+    await logout();
   };
 
   interface RowProps { icon: string; label: string; value?: string; danger?: boolean; onPress?: () => void; }
@@ -42,74 +41,112 @@ const ProfileScreen = () => {
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
 
-      {/* Hero */}
-      <View style={styles.hero}>
-        <View style={styles.avatarRing}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase()}</Text>
+        {/* Hero */}
+        <View style={styles.hero}>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase()}</Text>
+            </View>
+          </View>
+          <Text style={styles.userName}>{user?.name}</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={styles.userPhone}>{user?.phone}</Text>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{bookings.length}</Text>
+            <Text style={styles.statLabel}>TOTAL</Text>
+          </View>
+          <View style={[styles.statCard, styles.statCardMiddle]}>
+            <Text style={[styles.statValue, { color: Colors.success }]}>{confirmed}</Text>
+            <Text style={styles.statLabel}>ACTIVE</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statValue, { color: Colors.gold }]}>
+              ₹{totalPaid > 0 ? (totalPaid / 1000).toFixed(1) + 'k' : '0'}
+            </Text>
+            <Text style={styles.statLabel}>SPENT</Text>
           </View>
         </View>
-        <Text style={styles.userName}>{user?.name}</Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
-        <Text style={styles.userPhone}>{user?.phone}</Text>
-      </View>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{bookings.length}</Text>
-          <Text style={styles.statLabel}>TOTAL</Text>
+        {/* Account section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>ACCOUNT</Text>
+          <View style={styles.menuCard}>
+            <MenuRow icon="account-outline" label="Full Name" value={user?.name} />
+            <View style={styles.menuDivider} />
+            <MenuRow icon="email-outline" label="Email" value={user?.email} />
+            <View style={styles.menuDivider} />
+            <MenuRow icon="phone-outline" label="Phone" value={user?.phone} />
+          </View>
         </View>
-        <View style={[styles.statCard, styles.statCardMiddle]}>
-          <Text style={[styles.statValue, { color: Colors.success }]}>{confirmed}</Text>
-          <Text style={styles.statLabel}>ACTIVE</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statValue, { color: Colors.gold }]}>
-            ₹{totalPaid > 0 ? (totalPaid / 1000).toFixed(1) + 'k' : '0'}
-          </Text>
-          <Text style={styles.statLabel}>SPENT</Text>
-        </View>
-      </View>
 
-      {/* Account section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>ACCOUNT</Text>
-        <View style={styles.menuCard}>
-          <MenuRow icon="account-outline" label="Full Name" value={user?.name} />
-          <View style={styles.menuDivider} />
-          <MenuRow icon="email-outline" label="Email" value={user?.email} />
-          <View style={styles.menuDivider} />
-          <MenuRow icon="phone-outline" label="Phone" value={user?.phone} />
+        {/* App section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>APP</Text>
+          <View style={styles.menuCard}>
+            <MenuRow icon="bell-outline" label="Notifications" onPress={() => {}} />
+            <View style={styles.menuDivider} />
+            <MenuRow icon="shield-outline" label="Privacy Policy" onPress={() => {}} />
+            <View style={styles.menuDivider} />
+            <MenuRow icon="file-document-outline" label="Terms of Service" onPress={() => {}} />
+            <View style={styles.menuDivider} />
+            <MenuRow icon="information-outline" label="Version" value="1.0.0" />
+          </View>
         </View>
-      </View>
 
-      {/* App section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>APP</Text>
-        <View style={styles.menuCard}>
-          <MenuRow icon="bell-outline" label="Notifications" onPress={() => {}} />
-          <View style={styles.menuDivider} />
-          <MenuRow icon="shield-outline" label="Privacy Policy" onPress={() => {}} />
-          <View style={styles.menuDivider} />
-          <MenuRow icon="file-document-outline" label="Terms of Service" onPress={() => {}} />
-          <View style={styles.menuDivider} />
-          <MenuRow icon="information-outline" label="Version" value="1.0.0" />
+        {/* Logout */}
+        <View style={styles.section}>
+          <View style={styles.menuCard}>
+            <MenuRow icon="logout" label="Sign Out" danger onPress={() => setShowLogoutModal(true)} />
+          </View>
         </View>
-      </View>
 
-      {/* Logout */}
-      <View style={styles.section}>
-        <View style={styles.menuCard}>
-          <MenuRow icon="logout" label="Sign Out" danger onPress={handleLogout} />
+        <Text style={styles.footer}>TableVault  ·  Made with care in India</Text>
+      </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIcon}>
+              <Icon name="logout" size={28} color={Colors.danger} />
+            </View>
+            <Text style={styles.modalTitle}>Sign Out</Text>
+            <Text style={styles.modalMessage}>Are you sure you want to sign out?</Text>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn} 
+                onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalConfirmBtn} 
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalConfirmText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
-
-      <Text style={styles.footer}>TableVault  ·  Made with care in India</Text>
-    </ScrollView>
+      </Modal>
+    </>
   );
 };
 
@@ -164,6 +201,76 @@ const styles = StyleSheet.create({
   menuDivider: { height: 1, backgroundColor: Colors.border, marginLeft: 64 },
 
   footer: { textAlign: 'center', fontSize: 11, color: Colors.textMuted, letterSpacing: 0.5 },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(28, 25, 23, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    ...Shadow.lg,
+  },
+  modalIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.dangerBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: Colors.danger,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });
 
 export default ProfileScreen;
