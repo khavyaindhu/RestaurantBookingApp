@@ -16,6 +16,7 @@ const RegisterScreen = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigation = useNavigation<any>();
@@ -35,34 +36,6 @@ const RegisterScreen = () => {
     setLoading(false);
     if (!result.success) Toast.show({ type: 'error', text1: 'Registration Failed', text2: result.message });
   };
-
-  interface FieldProps {
-    label: string; icon: string; value: string; onChange: (v: string) => void;
-    placeholder: string; keyboard?: any; secure?: boolean;
-  }
-  const Field = ({ label, icon, value, onChange, placeholder, keyboard = 'default', secure = false }: FieldProps) => (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputBox}>
-        <Icon name={icon} size={16} color={Colors.textMuted} />
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder={placeholder}
-          placeholderTextColor={Colors.textMuted}
-          value={value}
-          onChangeText={onChange}
-          keyboardType={keyboard}
-          autoCapitalize="none"
-          secureTextEntry={secure && !showPassword}
-        />
-        {secure && (
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Icon name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={16} color={Colors.textMuted} />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -84,11 +57,95 @@ const RegisterScreen = () => {
           <Text style={styles.pageTitle}>Create account</Text>
           <Text style={styles.pageSub}>Join TableVault and start booking</Text>
 
-          <Field label="FULL NAME" icon="account-outline" value={name} onChange={setName} placeholder="John Doe" />
-          <Field label="EMAIL ADDRESS" icon="email-outline" value={email} onChange={setEmail} placeholder="you@example.com" keyboard="email-address" />
-          <Field label="PHONE NUMBER" icon="phone-outline" value={phone} onChange={setPhone} placeholder="9876543210" keyboard="phone-pad" />
-          <Field label="PASSWORD" icon="lock-outline" value={password} onChange={setPassword} placeholder="Create a strong password" secure />
-          <Field label="CONFIRM PASSWORD" icon="lock-check-outline" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" secure />
+          {/* Full Name */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>FULL NAME</Text>
+            <View style={styles.inputBox}>
+              <Icon name="account-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                placeholderTextColor={Colors.textMuted}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          {/* Email */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
+            <View style={styles.inputBox}>
+              <Icon name="email-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor={Colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* Phone */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>PHONE NUMBER</Text>
+            <View style={styles.inputBox}>
+              <Icon name="phone-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="9876543210"
+                placeholderTextColor={Colors.textMuted}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+            </View>
+          </View>
+
+          {/* Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>PASSWORD</Text>
+            <View style={styles.inputBox}>
+              <Icon name="lock-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Create a strong password"
+                placeholderTextColor={Colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Icon name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Confirm Password */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
+            <View style={styles.inputBox}>
+              <Icon name="lock-check-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Re-enter password"
+                placeholderTextColor={Colors.textMuted}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <Icon name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <TouchableOpacity style={styles.ctaBtn} onPress={handleRegister} disabled={loading} activeOpacity={0.85}>
             {loading
@@ -131,7 +188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 14,
     borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
   },
-  input: { fontSize: 14, color: Colors.textPrimary },
+  input: { flex: 1, fontSize: 14, color: Colors.textPrimary },
   ctaBtn: {
     backgroundColor: Colors.bgDark, borderRadius: 10, paddingVertical: 16,
     alignItems: 'center', marginTop: 8, marginBottom: 24,

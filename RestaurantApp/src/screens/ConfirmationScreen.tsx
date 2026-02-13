@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Share, ScrollView, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Share, ScrollView, StatusBar, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
@@ -36,12 +36,29 @@ const ConfirmationScreen = () => {
     navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Main' }] }));
   };
 
+  const viewBookings = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 1,
+        routes: [
+          { name: 'Main' },
+          { name: 'Main', params: { screen: 'MyBookings' } }
+        ],
+      })
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
 
       {/* Dark top section */}
       <View style={styles.topSection}>
+        {/* Close button */}
+        <TouchableOpacity style={styles.closeBtn} onPress={goHome} activeOpacity={0.8}>
+          <Icon name="close" size={24} color="#F8F5F0" />
+        </TouchableOpacity>
+        
         <Animated.View style={[styles.checkCircle, { transform: [{ scale: checkScale }] }]}>
           <Icon name="check" size={36} color={Colors.bgDark} />
         </Animated.View>
@@ -52,7 +69,11 @@ const ConfirmationScreen = () => {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+      >
         <Animated.View style={{ opacity: contentFade, transform: [{ translateY: cardSlide }] }}>
 
           {/* Code card */}
@@ -112,7 +133,13 @@ const ConfirmationScreen = () => {
             <Text style={styles.shareBtnText}>SHARE BOOKING</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.viewBookingsBtn} onPress={viewBookings} activeOpacity={0.85}>
+            <Icon name="calendar-check" size={16} color={Colors.textInverse} />
+            <Text style={styles.viewBookingsBtnText}>VIEW MY BOOKINGS</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.homeBtn} onPress={goHome} activeOpacity={0.85}>
+            <Icon name="home-outline" size={16} color={Colors.bgDark} />
             <Text style={styles.homeBtnText}>BACK TO HOME</Text>
           </TouchableOpacity>
 
@@ -124,9 +151,22 @@ const ConfirmationScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  scrollView: { flex: 1 },
   topSection: {
     backgroundColor: Colors.bgDark, paddingTop: 60, paddingBottom: 36,
-    alignItems: 'center', gap: 12,
+    alignItems: 'center', gap: 12, position: 'relative',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 52,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(248,245,240,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   checkCircle: {
     width: 76, height: 76, borderRadius: 38,
@@ -136,7 +176,7 @@ const styles = StyleSheet.create({
   successTitle: { fontSize: 22, fontWeight: '700', color: '#F8F5F0' },
   successSub: { fontSize: 13, color: '#78716C' },
 
-  scroll: { padding: 20, paddingBottom: 40 },
+  scroll: { padding: 20, paddingBottom: 120 },
 
   codeCard: {
     backgroundColor: Colors.surface, borderRadius: 16, padding: 24,
@@ -179,15 +219,24 @@ const styles = StyleSheet.create({
 
   shareBtn: {
     borderRadius: 10, paddingVertical: 14, alignItems: 'center',
-    borderWidth: 1.5, borderColor: Colors.bgDark, marginBottom: 10,
+    borderWidth: 1.5, borderColor: Colors.border, marginBottom: 10,
     flexDirection: 'row', justifyContent: 'center', gap: 8,
   },
   shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 1.5 },
-  homeBtn: {
+  
+  viewBookingsBtn: {
     backgroundColor: Colors.bgDark, borderRadius: 10, paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: 'center', marginBottom: 10,
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
   },
-  homeBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textInverse, letterSpacing: 1.5 },
+  viewBookingsBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textInverse, letterSpacing: 1.5 },
+  
+  homeBtn: {
+    borderRadius: 10, paddingVertical: 16,
+    alignItems: 'center', borderWidth: 2, borderColor: Colors.bgDark,
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
+  },
+  homeBtnText: { fontSize: 12, fontWeight: '700', color: Colors.bgDark, letterSpacing: 1.5 },
 });
 
 export default ConfirmationScreen;

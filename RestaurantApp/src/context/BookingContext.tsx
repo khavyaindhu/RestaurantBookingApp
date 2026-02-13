@@ -197,8 +197,8 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const cancelBooking = (bookingId: string) => {
-    ALL_BOOKINGS = ALL_BOOKINGS.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' } : b);
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' } : b));
+    ALL_BOOKINGS = ALL_BOOKINGS.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' as const } : b);
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' as const } : b));
   };
 
   const getUserBookings = (userId: string): Booking[] => {

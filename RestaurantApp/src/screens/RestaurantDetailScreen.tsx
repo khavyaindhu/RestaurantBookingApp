@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar,
+  View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -28,7 +28,11 @@ const RestaurantDetailScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollView}
+      >
         {/* Hero */}
         <View style={styles.hero}>
           <Image source={{ uri: r.image }} style={styles.heroImage} resizeMode="cover" />
@@ -80,7 +84,7 @@ const RestaurantDetailScreen = () => {
 
             {/* Progress bar */}
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${pct}%` as any, backgroundColor: seatColor }]} />
+              <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: seatColor }]} />
             </View>
             <Text style={styles.progressLabel}>{pct}% available</Text>
           </View>
@@ -106,7 +110,7 @@ const RestaurantDetailScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA - Fixed at bottom */}
       <View style={styles.bottomBar}>
         <View style={styles.bottomLeft}>
           <Text style={styles.bottomLabel}>AVAILABILITY</Text>
@@ -129,12 +133,13 @@ const RestaurantDetailScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 120 }, // Add padding for bottom bar
   hero: { height: 320, position: 'relative' },
   heroImage: { width: '100%', height: '100%' },
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
-    // Simulated gradient via multiple overlays
   },
   backBtn: {
     position: 'absolute', top: 52, left: 18,
@@ -186,11 +191,26 @@ const styles = StyleSheet.create({
   aboutText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
 
   bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.surface, paddingHorizontal: 20, paddingVertical: 16,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0,
+    backgroundColor: Colors.surface, 
+    paddingHorizontal: 20, 
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'web' ? 16 : 20,
+    borderTopWidth: 1, 
+    borderTopColor: Colors.border,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
     ...Shadow.lg,
+    elevation: 10,
+    minHeight: 80,
+    ...(Platform.OS === 'web' && {
+      position: 'fixed' as any,
+      zIndex: 1000,
+    }),
   },
   bottomLeft: {},
   bottomLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.2, marginBottom: 2 },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -48,7 +48,11 @@ const PaymentScreen = () => {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+      >
 
         {/* Amount Hero */}
         <View style={styles.amountCard}>
@@ -123,6 +127,7 @@ const PaymentScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  scrollView: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
@@ -130,7 +135,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, justifyContent: 'center' },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  scroll: { padding: 20, paddingBottom: 130 },
+  scroll: { padding: 20, paddingBottom: 160 },
 
   amountCard: {
     backgroundColor: Colors.bgDark, borderRadius: 16, padding: 24,
@@ -177,9 +182,23 @@ const styles = StyleSheet.create({
   secureText: { fontSize: 11, color: Colors.success, fontWeight: '500' },
 
   bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.surface, padding: 16, gap: 10,
-    borderTopWidth: 1, borderTopColor: Colors.border, ...Shadow.lg,
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0,
+    backgroundColor: Colors.surface, 
+    padding: 16, 
+    gap: 10,
+    paddingBottom: Platform.OS === 'web' ? 16 : 20,
+    borderTopWidth: 1, 
+    borderTopColor: Colors.border, 
+    ...Shadow.lg,
+    elevation: 10,
+    minHeight: 140,
+    ...(Platform.OS === 'web' && {
+      position: 'fixed' as any,
+      zIndex: 1000,
+    }),
   },
   skipBtn: {
     borderRadius: 10, paddingVertical: 13, alignItems: 'center',

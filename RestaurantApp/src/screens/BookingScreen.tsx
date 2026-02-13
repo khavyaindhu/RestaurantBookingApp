@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Modal,
+  StatusBar, Modal, Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import { useBooking, TimeSlot } from '../context/BookingContext';
+import {  TimeSlot } from '../context/BookingContext';
+import { useBooking } from '../context/BookingContext';
+
 import { Colors, Shadow } from '../utils/theme';
 
 const SEAT_PRICE = 299;
@@ -141,7 +143,7 @@ const calStyles = StyleSheet.create({
   dayLabel: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: Colors.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: {
-    width: `${100 / 7}%` as any, aspectRatio: 1,
+    width: `${100 / 7}%`, aspectRatio: 1,
     justifyContent: 'center', alignItems: 'center', borderRadius: 999,
   },
   cellSelected: { backgroundColor: Colors.bgDark },
@@ -228,7 +230,11 @@ const BookingScreen = () => {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+      >
 
         {/* Step 1 — Date */}
         <View style={styles.stepCard}>
@@ -358,6 +364,7 @@ const BookingScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  scrollView: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
@@ -366,7 +373,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, justifyContent: 'center' },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
-  scroll: { padding: 20, paddingBottom: 120 },
+  scroll: { padding: 20, paddingBottom: 140 },
 
   stepCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 18,
@@ -435,10 +442,26 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
 
   bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.surface, paddingHorizontal: 20, paddingVertical: 16,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...Shadow.lg,
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0,
+    backgroundColor: Colors.surface, 
+    paddingHorizontal: 20, 
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'web' ? 16 : 20,
+    borderTopWidth: 1, 
+    borderTopColor: Colors.border,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    ...Shadow.lg,
+    elevation: 10,
+    minHeight: 80,
+    ...(Platform.OS === 'web' && {
+      position: 'fixed' as any,
+      zIndex: 1000,
+    }),
   },
   bottomLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 2 },
   bottomAmount: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
