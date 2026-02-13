@@ -56,18 +56,19 @@ const MainTabNavigator = () => (
     screenOptions={{
       headerShown: false,
       tabBarStyle: {
-        backgroundColor: '#1A0A2E',
-        borderTopColor: '#2D1B69',
+        backgroundColor: '#1C1917',
+        borderTopColor: '#2C2926',
         borderTopWidth: 1,
-        height: 65,
+        height: 64,
         paddingBottom: 10,
         paddingTop: 8,
       },
-      tabBarActiveTintColor: '#FF6B35',
-      tabBarInactiveTintColor: '#8B7BA8',
+      tabBarActiveTintColor: '#C9A84C',
+      tabBarInactiveTintColor: '#78716C',
       tabBarLabelStyle: {
-        fontSize: 11,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
       },
     }}
   >

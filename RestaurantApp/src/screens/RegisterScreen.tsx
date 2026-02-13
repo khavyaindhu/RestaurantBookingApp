@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { Colors, Shadow } from '../utils/theme';
 
 const RegisterScreen = () => {
   const [name, setName] = useState('');
@@ -21,34 +22,33 @@ const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
-      Toast.show({ type: 'error', text1: 'All fields are required' });
-      return;
+      Toast.show({ type: 'error', text1: 'All fields are required' }); return;
     }
     if (password !== confirmPassword) {
-      Toast.show({ type: 'error', text1: 'Passwords do not match' });
-      return;
+      Toast.show({ type: 'error', text1: 'Passwords do not match' }); return;
     }
     if (phone.length < 10) {
-      Toast.show({ type: 'error', text1: 'Enter a valid phone number' });
-      return;
+      Toast.show({ type: 'error', text1: 'Enter a valid phone number' }); return;
     }
     setLoading(true);
     const result = await register(name.trim(), email.trim(), phone.trim(), password);
     setLoading(false);
-    if (!result.success) {
-      Toast.show({ type: 'error', text1: 'Registration Failed', text2: result.message });
-    }
+    if (!result.success) Toast.show({ type: 'error', text1: 'Registration Failed', text2: result.message });
   };
 
-  const Field = ({ label, icon, value, onChange, placeholder, keyboard = 'default', secure = false }: any) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputWrapper}>
-        <Icon name={icon} size={20} color="#8B7BA8" style={styles.inputIcon} />
+  interface FieldProps {
+    label: string; icon: string; value: string; onChange: (v: string) => void;
+    placeholder: string; keyboard?: any; secure?: boolean;
+  }
+  const Field = ({ label, icon, value, onChange, placeholder, keyboard = 'default', secure = false }: FieldProps) => (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.inputBox}>
+        <Icon name={icon} size={16} color={Colors.textMuted} />
         <TextInput
           style={[styles.input, { flex: 1 }]}
           placeholder={placeholder}
-          placeholderTextColor="#4A3D6B"
+          placeholderTextColor={Colors.textMuted}
           value={value}
           onChangeText={onChange}
           keyboardType={keyboard}
@@ -57,7 +57,7 @@ const RegisterScreen = () => {
         />
         {secure && (
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#8B7BA8" />
+            <Icon name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={16} color={Colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -66,42 +66,43 @@ const RegisterScreen = () => {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Back */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.bg} />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join TableVault and start booking</Text>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.topBarTitle}>
+            <Text style={styles.topBarBrand}>TableVault</Text>
+          </View>
+          <View style={{ width: 36 }} />
         </View>
 
-        <View style={styles.card}>
-          <Field label="Full Name" icon="account-outline" value={name} onChange={setName} placeholder="John Doe" />
-          <Field label="Email Address" icon="email-outline" value={email} onChange={setEmail} placeholder="you@example.com" keyboard="email-address" />
-          <Field label="Phone Number" icon="phone-outline" value={phone} onChange={setPhone} placeholder="9876543210" keyboard="phone-pad" />
-          <Field label="Password" icon="lock-outline" value={password} onChange={setPassword} placeholder="Create a strong password" secure={true} />
-          <Field label="Confirm Password" icon="lock-check-outline" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" secure={true} />
+        <View style={styles.formWrap}>
+          <Text style={styles.pageTitle}>Create account</Text>
+          <Text style={styles.pageSub}>Join TableVault and start booking</Text>
 
-          <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.registerBtnText}>Create Account</Text>
-                <Icon name="account-plus" size={20} color="#fff" />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+          <Field label="FULL NAME" icon="account-outline" value={name} onChange={setName} placeholder="John Doe" />
+          <Field label="EMAIL ADDRESS" icon="email-outline" value={email} onChange={setEmail} placeholder="you@example.com" keyboard="email-address" />
+          <Field label="PHONE NUMBER" icon="phone-outline" value={phone} onChange={setPhone} placeholder="9876543210" keyboard="phone-pad" />
+          <Field label="PASSWORD" icon="lock-outline" value={password} onChange={setPassword} placeholder="Create a strong password" secure />
+          <Field label="CONFIRM PASSWORD" icon="lock-check-outline" value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter password" secure />
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.footerLink}>Sign In</Text>
+          <TouchableOpacity style={styles.ctaBtn} onPress={handleRegister} disabled={loading} activeOpacity={0.85}>
+            {loading
+              ? <ActivityIndicator color={Colors.bgDark} />
+              : <Text style={styles.ctaBtnText}>CREATE ACCOUNT</Text>
+            }
           </TouchableOpacity>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>Already have an account?  </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -109,30 +110,36 @@ const RegisterScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A0A2E' },
-  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 40 },
-  backBtn: { marginTop: 50, marginBottom: 10, alignSelf: 'flex-start', padding: 4 },
-  header: { paddingBottom: 24 },
-  title: { fontSize: 28, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 14, color: '#8B7BA8', marginTop: 4 },
-  card: { backgroundColor: '#231040', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#2D1B69' },
-  inputGroup: { marginBottom: 14 },
-  label: { fontSize: 13, color: '#C4B5E0', fontWeight: '600', marginBottom: 8 },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A0A2E',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#3D2B80',
+  container: { flex: 1, backgroundColor: Colors.bg },
+  scroll: { flexGrow: 1 },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
+    backgroundColor: Colors.bg, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  inputIcon: { marginRight: 10 },
-  input: { color: '#FFFFFF', fontSize: 15, paddingVertical: 12 },
-  registerBtn: {
-    backgroundColor: '#FF6B35', borderRadius: 12, paddingVertical: 16,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8,
+  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  topBarTitle: { alignItems: 'center' },
+  topBarBrand: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, letterSpacing: 3 },
+  formWrap: { paddingHorizontal: 28, paddingTop: 32, paddingBottom: 48 },
+  pageTitle: { fontSize: 26, fontWeight: '700', color: Colors.textPrimary, marginBottom: 6 },
+  pageSub: { fontSize: 14, color: Colors.textSecondary, marginBottom: 32, lineHeight: 20 },
+  fieldGroup: { marginBottom: 18 },
+  fieldLabel: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.2, marginBottom: 8 },
+  inputBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 14,
+    borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
   },
-  registerBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  footerText: { color: '#8B7BA8', fontSize: 14 },
-  footerLink: { color: '#FF6B35', fontSize: 14, fontWeight: '700' },
+  input: { fontSize: 14, color: Colors.textPrimary },
+  ctaBtn: {
+    backgroundColor: Colors.bgDark, borderRadius: 10, paddingVertical: 16,
+    alignItems: 'center', marginTop: 8, marginBottom: 24,
+  },
+  ctaBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textInverse, letterSpacing: 2 },
+  loginRow: { flexDirection: 'row', justifyContent: 'center' },
+  loginText: { fontSize: 14, color: Colors.textSecondary },
+  loginLink: { fontSize: 14, fontWeight: '700', color: Colors.bgDark, textDecorationLine: 'underline' },
 });
 
 export default RegisterScreen;

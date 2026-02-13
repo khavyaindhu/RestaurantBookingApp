@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useBooking } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
+import { Colors, Shadow } from '../utils/theme';
 
 const PAYMENT_METHODS = [
-  { id: 'upi', label: 'UPI / Google Pay / PhonePe', icon: 'cellphone-check' },
-  { id: 'card', label: 'Credit / Debit Card', icon: 'credit-card-outline' },
-  { id: 'netbanking', label: 'Net Banking', icon: 'bank-outline' },
+  { id: 'upi', label: 'UPI / Google Pay / PhonePe', sub: 'Instant payment via UPI ID', icon: 'cellphone-check' },
+  { id: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: 'credit-card-outline' },
+  { id: 'netbanking', label: 'Net Banking', sub: 'All major banks supported', icon: 'bank-outline' },
 ];
 
 const PaymentScreen = () => {
@@ -25,8 +25,7 @@ const PaymentScreen = () => {
 
   const simulatePayment = async () => {
     setLoading(true);
-    // Simulate API payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(r => setTimeout(r, 2000));
     setLoading(false);
     const booking = confirmBooking(user!.id, 'paid', bookingData.totalAmount);
     navigation.replace('Confirmation', { booking });
@@ -39,82 +38,83 @@ const PaymentScreen = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.bg} />
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
-          <Icon name="arrow-left" size={24} color="#fff" />
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading} style={styles.backBtn}>
+          <Icon name="arrow-left" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payment</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Amount Card */}
+
+        {/* Amount Hero */}
         <View style={styles.amountCard}>
-          <View style={styles.amountIcon}>
-            <Icon name="receipt" size={30} color="#FF6B35" />
-          </View>
-          <Text style={styles.amountLabel}>Total Amount</Text>
+          <Text style={styles.amountLabel}>AMOUNT DUE</Text>
           <Text style={styles.amountValue}>₹{bookingData.totalAmount.toLocaleString()}</Text>
-          <Text style={styles.amountSub}>{bookingData.seats} seat{bookingData.seats > 1 ? 's' : ''} × ₹299</Text>
-        </View>
-
-        {/* Booking Info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Booking Details</Text>
-          {[
-            { icon: 'silverware-fork-knife', label: bookingData.restaurantName },
-            { icon: 'calendar', label: bookingData.date },
-            { icon: 'clock-outline', label: bookingData.time },
-            { icon: 'seat', label: `${bookingData.seats} seat${bookingData.seats > 1 ? 's' : ''}` },
-          ].map(item => (
-            <View key={item.label} style={styles.infoRow}>
-              <Icon name={item.icon} size={16} color="#FF6B35" />
-              <Text style={styles.infoText}>{item.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Payment Methods */}
-        <View style={styles.methodCard}>
-          <Text style={styles.cardTitle}>Payment Method</Text>
-          {PAYMENT_METHODS.map(m => (
-            <TouchableOpacity
-              key={m.id}
-              style={[styles.methodRow, selectedMethod === m.id && styles.methodRowActive]}
-              onPress={() => setSelectedMethod(m.id)}
-            >
-              <Icon name={m.icon} size={22} color={selectedMethod === m.id ? '#FF6B35' : '#8B7BA8'} />
-              <Text style={[styles.methodLabel, selectedMethod === m.id && styles.methodLabelActive]}>
-                {m.label}
-              </Text>
-              <View style={[styles.radio, selectedMethod === m.id && styles.radioActive]}>
-                {selectedMethod === m.id && <View style={styles.radioDot} />}
+          <Text style={styles.amountBreakdown}>
+            {bookingData.seats} seat{bookingData.seats > 1 ? 's' : ''}  ×  ₹299 per seat
+          </Text>
+          <View style={styles.amountDivider} />
+          <View style={styles.amountDetails}>
+            {[
+              { icon: 'silverware-fork-knife', text: bookingData.restaurantName },
+              { icon: 'calendar-outline', text: bookingData.date },
+              { icon: 'clock-outline', text: `${bookingData.time} · ${bookingData.seats} seats` },
+            ].map(item => (
+              <View key={item.text} style={styles.amountDetailRow}>
+                <Icon name={item.icon} size={13} color={Colors.textMuted} />
+                <Text style={styles.amountDetailText}>{item.text}</Text>
               </View>
-            </TouchableOpacity>
-          ))}
+            ))}
+          </View>
         </View>
 
-        {/* Security Note */}
+        {/* Payment Method */}
+        <Text style={styles.sectionLabel}>PAYMENT METHOD</Text>
+        {PAYMENT_METHODS.map(m => (
+          <TouchableOpacity
+            key={m.id}
+            style={[styles.methodCard, selectedMethod === m.id && styles.methodCardActive]}
+            onPress={() => setSelectedMethod(m.id)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.methodIconBox, selectedMethod === m.id && styles.methodIconBoxActive]}>
+              <Icon name={m.icon} size={20} color={selectedMethod === m.id ? Colors.textInverse : Colors.textSecondary} />
+            </View>
+            <View style={styles.methodText}>
+              <Text style={[styles.methodLabel, selectedMethod === m.id && styles.methodLabelActive]}>{m.label}</Text>
+              <Text style={styles.methodSub}>{m.sub}</Text>
+            </View>
+            <View style={[styles.radioOuter, selectedMethod === m.id && styles.radioOuterActive]}>
+              {selectedMethod === m.id && <View style={styles.radioInner} />}
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Security */}
         <View style={styles.secureRow}>
-          <Icon name="shield-check" size={16} color="#4CAF50" />
-          <Text style={styles.secureText}>Secured by 256-bit SSL encryption</Text>
+          <Icon name="shield-check-outline" size={14} color={Colors.success} />
+          <Text style={styles.secureText}>256-bit SSL encryption  ·  PCI DSS compliant</Text>
         </View>
+
       </ScrollView>
 
-      {/* Action Buttons */}
+      {/* Actions */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.skipBtn} onPress={skipPayment} disabled={loading}>
-          <Text style={styles.skipBtnText}>Skip, Book for Free</Text>
+        <TouchableOpacity style={styles.skipBtn} onPress={skipPayment} disabled={loading} activeOpacity={0.8}>
+          <Text style={styles.skipBtnText}>Skip — Pay at Restaurant</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.payBtn} onPress={simulatePayment} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Icon name="lock" size={18} color="#fff" />
-              <Text style={styles.payBtnText}>Pay ₹{bookingData.totalAmount.toLocaleString()}</Text>
-            </>
-          )}
+        <TouchableOpacity style={styles.payBtn} onPress={simulatePayment} disabled={loading} activeOpacity={0.85}>
+          {loading
+            ? <ActivityIndicator color={Colors.textInverse} size="small" />
+            : <>
+                <Icon name="lock-outline" size={16} color={Colors.textInverse} />
+                <Text style={styles.payBtnText}>PAY  ₹{bookingData.totalAmount.toLocaleString()}</Text>
+              </>
+          }
         </TouchableOpacity>
       </View>
     </View>
@@ -122,67 +122,75 @@ const PaymentScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A0A2E' },
+  container: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 16,
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  scroll: { padding: 16, paddingBottom: 120 },
+  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  scroll: { padding: 20, paddingBottom: 130 },
+
   amountCard: {
-    backgroundColor: '#231040', borderRadius: 20, padding: 24, alignItems: 'center',
-    borderWidth: 1, borderColor: '#FF6B3540', marginBottom: 16,
+    backgroundColor: Colors.bgDark, borderRadius: 16, padding: 24,
+    alignItems: 'center', marginBottom: 28, ...Shadow.md,
   },
-  amountIcon: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF6B3520',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: '#FF6B3560',
+  amountLabel: { fontSize: 10, fontWeight: '700', color: Colors.gold, letterSpacing: 2, marginBottom: 8 },
+  amountValue: { fontSize: 48, fontWeight: '700', color: '#F8F5F0', marginBottom: 4 },
+  amountBreakdown: { fontSize: 13, color: '#78716C', marginBottom: 20 },
+  amountDivider: { width: '100%', height: 1, backgroundColor: '#2C2926', marginBottom: 16 },
+  amountDetails: { width: '100%', gap: 8 },
+  amountDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  amountDetailText: { fontSize: 13, color: '#A8A29E' },
+
+  sectionLabel: {
+    fontSize: 10, fontWeight: '700', color: Colors.textMuted,
+    letterSpacing: 1.5, marginBottom: 12,
   },
-  amountLabel: { color: '#8B7BA8', fontSize: 14, marginBottom: 8 },
-  amountValue: { color: '#FFFFFF', fontSize: 40, fontWeight: '800' },
-  amountSub: { color: '#8B7BA8', fontSize: 13, marginTop: 4 },
-  infoCard: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#2D1B69', marginBottom: 16,
-  },
-  cardTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 14 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  infoText: { color: '#C4B5E0', fontSize: 14 },
   methodCard: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#2D1B69', marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 16,
+    borderWidth: 1.5, borderColor: Colors.border, marginBottom: 10, ...Shadow.sm,
   },
-  methodRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
-    borderRadius: 12, borderWidth: 1, borderColor: '#3D2B80', marginBottom: 10,
+  methodCardActive: { borderColor: Colors.bgDark },
+  methodIconBox: {
+    width: 42, height: 42, borderRadius: 10, backgroundColor: Colors.surfaceWarm,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  methodRowActive: { borderColor: '#FF6B35', backgroundColor: '#FF6B3510' },
-  methodLabel: { flex: 1, color: '#8B7BA8', fontSize: 14 },
-  methodLabelActive: { color: '#FFFFFF' },
-  radio: {
+  methodIconBoxActive: { backgroundColor: Colors.bgDark, borderColor: Colors.bgDark },
+  methodText: { flex: 1 },
+  methodLabel: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
+  methodLabelActive: { color: Colors.textPrimary },
+  methodSub: { fontSize: 11, color: Colors.textMuted },
+  radioOuter: {
     width: 20, height: 20, borderRadius: 10, borderWidth: 2,
-    borderColor: '#4A3D6B', justifyContent: 'center', alignItems: 'center',
+    borderColor: Colors.border, justifyContent: 'center', alignItems: 'center',
   },
-  radioActive: { borderColor: '#FF6B35' },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF6B35' },
+  radioOuterActive: { borderColor: Colors.bgDark },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.bgDark },
   secureRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 8,
+    gap: 6, marginTop: 8,
   },
-  secureText: { color: '#4CAF50', fontSize: 12 },
+  secureText: { fontSize: 11, color: Colors.success, fontWeight: '500' },
+
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#231040', padding: 16, borderTopWidth: 1, borderTopColor: '#2D1B69', gap: 10,
+    backgroundColor: Colors.surface, padding: 16, gap: 10,
+    borderTopWidth: 1, borderTopColor: Colors.border, ...Shadow.lg,
   },
   skipBtn: {
-    borderRadius: 12, paddingVertical: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: '#3D2B80',
+    borderRadius: 10, paddingVertical: 13, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  skipBtnText: { color: '#8B7BA8', fontWeight: '600', fontSize: 14 },
+  skipBtnText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
   payBtn: {
-    backgroundColor: '#FF6B35', borderRadius: 12, paddingVertical: 16,
+    backgroundColor: Colors.bgDark, borderRadius: 10, paddingVertical: 16,
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
   },
-  payBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  payBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textInverse, letterSpacing: 1.5 },
 });
 
 export default PaymentScreen;

@@ -1,70 +1,67 @@
 import React, { useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import { useBooking, Booking } from '../context/BookingContext';
+import { Colors, Shadow } from '../utils/theme';
 
-const STATUS_CONFIG: Record<string, { color: string; icon: string; bg: string }> = {
-  confirmed: { color: '#4CAF50', icon: 'check-circle', bg: '#4CAF5020' },
-  cancelled: { color: '#FF4444', icon: 'close-circle', bg: '#FF444420' },
-  completed: { color: '#8B7BA8', icon: 'check-all', bg: '#8B7BA820' },
+const STATUS = {
+  confirmed: { color: Colors.success,  bg: Colors.successBg, icon: 'check-circle-outline',  label: 'Confirmed' },
+  cancelled: { color: Colors.danger,   bg: Colors.dangerBg,  icon: 'close-circle-outline',  label: 'Cancelled' },
+  completed: { color: Colors.textMuted, bg: Colors.border,   icon: 'check-all',             label: 'Completed' },
 };
 
 const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => void }) => {
-  const status = STATUS_CONFIG[booking.bookingStatus] || STATUS_CONFIG.confirmed;
-
+  const st = STATUS[booking.bookingStatus] || STATUS.confirmed;
   return (
     <View style={styles.card}>
-      {/* Status & Code */}
+      {/* Top row: restaurant + status */}
       <View style={styles.cardTop}>
-        <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-          <Icon name={status.icon} size={14} color={status.color} />
-          <Text style={[styles.statusText, { color: status.color }]}>
-            {booking.bookingStatus.charAt(0).toUpperCase() + booking.bookingStatus.slice(1)}
-          </Text>
+        <View style={styles.cardTopLeft}>
+          <Text style={styles.cardRestaurant} numberOfLines={1}>{booking.restaurantName}</Text>
+          <Text style={styles.cardCode}>#{booking.confirmationCode}</Text>
         </View>
-        <View style={styles.codeBox}>
-          <Text style={styles.codeLabel}>Code: </Text>
-          <Text style={styles.codeVal}>{booking.confirmationCode}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+          <Icon name={st.icon} size={12} color={st.color} />
+          <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
         </View>
       </View>
 
-      {/* Restaurant Name */}
-      <Text style={styles.restaurantName}>{booking.restaurantName}</Text>
+      {/* Divider */}
+      <View style={styles.cardDivider} />
 
-      {/* Details */}
-      <View style={styles.detailsRow}>
-        <View style={styles.detail}>
-          <Icon name="calendar" size={14} color="#8B7BA8" />
-          <Text style={styles.detailText}>{booking.date}</Text>
+      {/* Details row */}
+      <View style={styles.cardDetails}>
+        <View style={styles.cardDetail}>
+          <Icon name="calendar-outline" size={13} color={Colors.textMuted} />
+          <Text style={styles.cardDetailText}>{booking.date}</Text>
         </View>
-        <View style={styles.detail}>
-          <Icon name="clock-outline" size={14} color="#8B7BA8" />
-          <Text style={styles.detailText}>{booking.time}</Text>
+        <View style={styles.cardDetail}>
+          <Icon name="clock-outline" size={13} color={Colors.textMuted} />
+          <Text style={styles.cardDetailText}>{booking.time}</Text>
         </View>
-        <View style={styles.detail}>
-          <Icon name="seat" size={14} color="#8B7BA8" />
-          <Text style={styles.detailText}>{booking.seats} seat{booking.seats > 1 ? 's' : ''}</Text>
+        <View style={styles.cardDetail}>
+          <Icon name="account-group-outline" size={13} color={Colors.textMuted} />
+          <Text style={styles.cardDetailText}>{booking.seats} {booking.seats === 1 ? 'guest' : 'guests'}</Text>
         </View>
       </View>
 
-      {/* Payment */}
-      <View style={styles.payRow}>
-        <Text style={styles.payLabel}>
-          {booking.paymentStatus === 'paid' ? '✅ Paid' : '⏳ Pay at restaurant'}
+      {/* Payment row */}
+      <View style={styles.cardPayRow}>
+        <Text style={styles.cardPayLabel}>
+          {booking.paymentStatus === 'paid' ? '✓ Paid' : 'Pay at restaurant'}
         </Text>
         {booking.paymentStatus === 'paid' && (
-          <Text style={styles.payAmount}>₹{booking.totalAmount.toLocaleString()}</Text>
+          <Text style={styles.cardPayAmount}>₹{booking.totalAmount.toLocaleString()}</Text>
         )}
       </View>
 
-      {/* Cancel Button */}
+      {/* Cancel */}
       {booking.bookingStatus === 'confirmed' && (
-        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-          <Icon name="cancel" size={16} color="#FF4444" />
-          <Text style={styles.cancelBtnText}>Cancel Booking</Text>
+        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
+          <Text style={styles.cancelBtnText}>Cancel Reservation</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -74,43 +71,41 @@ const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => 
 const MyBookingsScreen = () => {
   const { user } = useAuth();
   const { getUserBookings, cancelBooking } = useBooking();
-
   const bookings = useMemo(() => getUserBookings(user?.id || ''), [user?.id]);
 
-  const handleCancel = (booking: Booking) => {
+  const handleCancel = (b: Booking) => {
     Alert.alert(
-      'Cancel Booking',
-      `Cancel reservation at ${booking.restaurantName} on ${booking.date} at ${booking.time}?`,
+      'Cancel Reservation',
+      `Cancel your table at ${b.restaurantName} on ${b.date}?`,
       [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Yes, Cancel', style: 'destructive',
-          onPress: () => cancelBooking(booking.id),
-        },
+        { text: 'Keep Reservation', style: 'cancel' },
+        { text: 'Cancel', style: 'destructive', onPress: () => cancelBooking(b.id) },
       ]
     );
   };
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
+
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Bookings</Text>
-        <Text style={styles.headerSub}>{bookings.length} reservation{bookings.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerTitle}>My Reservations</Text>
+        <Text style={styles.headerSub}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
       </View>
 
       <FlatList
         data={bookings}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <BookingCard booking={item} onCancel={() => handleCancel(item)} />
-        )}
+        renderItem={({ item }) => <BookingCard booking={item} onCancel={() => handleCancel(item)} />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Icon name="calendar-blank-outline" size={60} color="#3D2B80" />
-            <Text style={styles.emptyTitle}>No bookings yet</Text>
-            <Text style={styles.emptySubtitle}>Your reservations will appear here</Text>
+            <View style={styles.emptyIcon}>
+              <Icon name="calendar-blank-outline" size={32} color={Colors.textMuted} />
+            </View>
+            <Text style={styles.emptyTitle}>No reservations yet</Text>
+            <Text style={styles.emptyText}>Your booking history will appear here</Text>
           </View>
         }
       />
@@ -119,39 +114,47 @@ const MyBookingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A0A2E' },
-  header: { paddingHorizontal: 20, paddingTop: 50, paddingBottom: 16 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
-  headerSub: { color: '#8B7BA8', fontSize: 13, marginTop: 4 },
-  listContent: { padding: 16, paddingBottom: 30 },
-  card: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18, marginBottom: 14,
-    borderWidth: 1, borderColor: '#2D1B69',
+  container: { flex: 1, backgroundColor: Colors.bg },
+  header: {
+    backgroundColor: Colors.bgDark,
+    paddingHorizontal: 24, paddingTop: 54, paddingBottom: 24,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#F8F5F0' },
+  headerSub: { fontSize: 13, color: '#78716C', marginTop: 2 },
+  listContent: { padding: 20, paddingBottom: 30 },
+  card: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 18,
+    marginBottom: 14, borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
+  },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  cardTopLeft: { flex: 1, marginRight: 12 },
+  cardRestaurant: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 3 },
+  cardCode: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' },
   statusBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
   },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  codeBox: { flexDirection: 'row', alignItems: 'center' },
-  codeLabel: { color: '#8B7BA8', fontSize: 12 },
-  codeVal: { color: '#FF6B35', fontSize: 12, fontWeight: '700' },
-  restaurantName: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 12 },
-  detailsRow: { flexDirection: 'row', gap: 16, marginBottom: 10, flexWrap: 'wrap' },
-  detail: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  detailText: { color: '#8B7BA8', fontSize: 13 },
-  payRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  payLabel: { color: '#C4B5E0', fontSize: 13 },
-  payAmount: { color: '#4CAF50', fontWeight: '700', fontSize: 14 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  cardDivider: { height: 1, backgroundColor: Colors.border, marginBottom: 14 },
+  cardDetails: { flexDirection: 'row', gap: 16, flexWrap: 'wrap', marginBottom: 12 },
+  cardDetail: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cardDetailText: { fontSize: 12, color: Colors.textSecondary },
+  cardPayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardPayLabel: { fontSize: 12, color: Colors.textSecondary },
+  cardPayAmount: { fontSize: 14, fontWeight: '700', color: Colors.success },
   cancelBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingTop: 10, borderTopWidth: 1, borderTopColor: '#2D1B69', justifyContent: 'center',
+    marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border,
+    alignItems: 'center',
   },
-  cancelBtnText: { color: '#FF4444', fontWeight: '600', fontSize: 14 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100, gap: 12 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
-  emptySubtitle: { color: '#8B7BA8', fontSize: 14 },
+  cancelBtnText: { fontSize: 12, fontWeight: '600', color: Colors.danger, letterSpacing: 0.5 },
+  emptyState: { alignItems: 'center', paddingTop: 80, gap: 10 },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.surfaceWarm,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  emptyText: { fontSize: 13, color: Colors.textMuted },
 });
 
 export default MyBookingsScreen;

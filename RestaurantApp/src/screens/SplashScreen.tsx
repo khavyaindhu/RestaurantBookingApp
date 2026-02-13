@@ -1,62 +1,64 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Colors } from '../utils/theme';
 
 const SplashScreen = () => {
-  const fadeAnim = new Animated.Value(0);
-  const scaleAnim = new Animated.Value(0.5);
+  const fade = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(30)).current;
+  const lineFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(slideUp, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ]),
+      Animated.timing(lineFade, { toValue: 1, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.iconContainer}>
-          <Icon name="silverware-fork-knife" size={60} color="#FF6B35" />
+      <View style={styles.decorLine1} />
+      <View style={styles.decorLine2} />
+
+      <Animated.View style={[styles.content, { opacity: fade, transform: [{ translateY: slideUp }] }]}>
+        <View style={styles.monogram}>
+          <Text style={styles.monogramText}>TV</Text>
         </View>
-        <Text style={styles.title}>TableVault</Text>
-        <Text style={styles.subtitle}>Reserve Your Perfect Seat</Text>
+        <Animated.View style={{ opacity: lineFade, alignItems: 'center' }}>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <View style={styles.dividerDot} />
+            <View style={styles.dividerLine} />
+          </View>
+          <Text style={styles.brandName}>TableVault</Text>
+          <Text style={styles.tagline}>FINE DINING  ·  RESERVATIONS</Text>
+        </Animated.View>
       </Animated.View>
+
+      <Text style={styles.footer}>Coimbatore's Premier Table Booking</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1A0A2E',
-    justifyContent: 'center',
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: Colors.bgDark, justifyContent: 'center', alignItems: 'center' },
+  decorLine1: { position: 'absolute', top: '25%', left: 0, right: 0, height: 1, backgroundColor: '#C9A84C15' },
+  decorLine2: { position: 'absolute', top: '75%', left: 0, right: 0, height: 1, backgroundColor: '#C9A84C15' },
+  content: { alignItems: 'center', gap: 20 },
+  monogram: {
+    width: 80, height: 80, borderRadius: 4,
+    borderWidth: 1.5, borderColor: Colors.gold,
+    justifyContent: 'center', alignItems: 'center',
   },
-  content: { alignItems: 'center' },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#2D1B69',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#8B7BA8',
-    marginTop: 8,
-    letterSpacing: 1,
-  },
+  monogramText: { fontSize: 26, fontWeight: '300', color: Colors.gold, letterSpacing: 6 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  dividerLine: { width: 40, height: 0.5, backgroundColor: Colors.gold },
+  dividerDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.gold },
+  brandName: { fontSize: 32, fontWeight: '300', color: '#F8F5F0', letterSpacing: 8, marginBottom: 6 },
+  tagline: { fontSize: 10, fontWeight: '600', color: Colors.gold, letterSpacing: 3 },
+  footer: { position: 'absolute', bottom: 40, fontSize: 11, color: '#78716C', letterSpacing: 1 },
 });
 
 export default SplashScreen;

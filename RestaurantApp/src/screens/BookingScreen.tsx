@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import DatePicker from 'react-native-date-picker';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import { useBooking, TimeSlot } from '../context/BookingContext';
-import { useAuth } from '../context/AuthContext';
+import { Colors, Shadow } from '../utils/theme';
 
-const SEAT_PRICE = 299; // ₹ per seat
+const SEAT_PRICE = 299;
 
 const BookingScreen = () => {
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
   const {
     selectedRestaurant, selectedDate, selectedTime, selectedSeats,
     setSelectedDate, setSelectedTime, setSelectedSeats, getAvailableSlots,
@@ -21,7 +20,6 @@ const BookingScreen = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
-
   const r = selectedRestaurant!;
 
   useEffect(() => {
@@ -29,80 +27,78 @@ const BookingScreen = () => {
   }, [selectedDate, r]);
 
   const minDate = new Date();
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 30);
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 30);
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const handleProceed = () => {
-    if (!selectedTime) {
-      Toast.show({ type: 'error', text1: 'Please select a time slot' });
-      return;
-    }
+    if (!selectedTime) { Toast.show({ type: 'error', text1: 'Please select a time slot' }); return; }
     const slot = slots.find(s => s.time === selectedTime);
     if (!slot || slot.availableSeats < selectedSeats) {
-      Toast.show({ type: 'error', text1: 'Not enough seats for selected slot' });
-      return;
+      Toast.show({ type: 'error', text1: 'Not enough seats for selected time' }); return;
     }
     navigation.navigate('Payment', {
       bookingData: {
-        restaurantName: r.name,
-        date: selectedDate.toDateString(),
-        time: selectedTime,
-        seats: selectedSeats,
-        totalAmount: selectedSeats * SEAT_PRICE,
+        restaurantName: r.name, date: selectedDate.toDateString(),
+        time: selectedTime, seats: selectedSeats, totalAmount: selectedSeats * SEAT_PRICE,
       },
     });
   };
 
-  const formatDate = (d: Date) =>
-    d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const StepLabel = ({ num, title, done }: { num: string; title: string; done: boolean }) => (
+    <View style={styles.stepLabel}>
+      <View style={[styles.stepBadge, done && styles.stepBadgeDone]}>
+        {done
+          ? <Icon name="check" size={12} color={Colors.textInverse} />
+          : <Text style={styles.stepNum}>{num}</Text>
+        }
+      </View>
+      <Text style={styles.stepTitle}>{title}</Text>
+    </View>
+  );
+
+  const totalAmount = selectedSeats * SEAT_PRICE;
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.bg} />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Icon name="arrow-left" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book a Table</Text>
-        <View style={{ width: 24 }} />
+        <View>
+          <Text style={styles.headerTitle}>Make a Reservation</Text>
+          <Text style={styles.headerSub}>{r.name}</Text>
+        </View>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Restaurant Info */}
-        <View style={styles.restaurantBar}>
-          <Icon name="silverware-fork-knife" size={18} color="#FF6B35" />
-          <Text style={styles.restaurantName}>{r.name}</Text>
-        </View>
 
-        {/* Step 1: Date */}
+        {/* Step 1 — Date */}
         <View style={styles.stepCard}>
-          <View style={styles.stepHeader}>
-            <View style={styles.stepBadge}><Text style={styles.stepNum}>1</Text></View>
-            <Text style={styles.stepTitle}>Select Date</Text>
-          </View>
-          <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
-            <Icon name="calendar" size={20} color="#FF6B35" />
-            <Text style={styles.dateBtnText}>{formatDate(selectedDate)}</Text>
-            <Icon name="chevron-down" size={20} color="#8B7BA8" />
+          <StepLabel num="1" title="SELECT DATE" done={true} />
+          <TouchableOpacity style={styles.datePicker} onPress={() => setShowDatePicker(true)} activeOpacity={0.85}>
+            <View>
+              <Text style={styles.dateLabel}>RESERVATION DATE</Text>
+              <Text style={styles.dateValue}>{formatDate(selectedDate)}</Text>
+            </View>
+            <Icon name="calendar-outline" size={20} color={Colors.gold} />
           </TouchableOpacity>
           <DatePicker
-            modal
-            open={showDatePicker}
-            date={selectedDate}
-            mode="date"
-            minimumDate={minDate}
-            maximumDate={maxDate}
+            modal open={showDatePicker} date={selectedDate} mode="date"
+            minimumDate={minDate} maximumDate={maxDate}
             onConfirm={date => { setShowDatePicker(false); setSelectedDate(date); setSelectedTime(''); }}
             onCancel={() => setShowDatePicker(false)}
           />
         </View>
 
-        {/* Step 2: Time Slot */}
+        {/* Step 2 — Time */}
         <View style={styles.stepCard}>
-          <View style={styles.stepHeader}>
-            <View style={styles.stepBadge}><Text style={styles.stepNum}>2</Text></View>
-            <Text style={styles.stepTitle}>Select Time Slot</Text>
-          </View>
+          <StepLabel num="2" title="SELECT TIME SLOT" done={!!selectedTime} />
           <View style={styles.slotsGrid}>
             {slots.map(slot => {
               const isSelected = selectedTime === slot.time;
@@ -111,90 +107,92 @@ const BookingScreen = () => {
                 <TouchableOpacity
                   key={slot.time}
                   style={[
-                    styles.slotChip,
-                    isSelected && styles.slotChipSelected,
-                    isFull && styles.slotChipFull,
+                    styles.slot,
+                    isSelected && styles.slotSelected,
+                    isFull && styles.slotFull,
                   ]}
                   onPress={() => !isFull && setSelectedTime(slot.time)}
                   disabled={isFull}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[
-                    styles.slotTime,
-                    isSelected && styles.slotTimeSelected,
-                    isFull && styles.slotTimeFull,
-                  ]}>
+                  <Text style={[styles.slotTime, isSelected && styles.slotTimeSelected, isFull && styles.slotTimeFull]}>
                     {slot.time}
                   </Text>
-                  <Text style={[
-                    styles.slotSeats,
-                    isSelected && styles.slotSeatsSelected,
-                    isFull && styles.slotSeatsFull,
-                  ]}>
-                    {isFull ? 'Full' : `${slot.availableSeats} seats`}
+                  <Text style={[styles.slotSeats, isSelected && styles.slotSeatsSelected, isFull && styles.slotSeatsFull]}>
+                    {isFull ? 'Full' : `${slot.availableSeats}`}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {selectedTime && (
+            <View style={styles.slotSelectedNote}>
+              <Icon name="check-circle-outline" size={14} color={Colors.success} />
+              <Text style={styles.slotSelectedNoteText}>Time slot {selectedTime} selected</Text>
+            </View>
+          )}
         </View>
 
-        {/* Step 3: Number of Seats */}
+        {/* Step 3 — Seats */}
         <View style={styles.stepCard}>
-          <View style={styles.stepHeader}>
-            <View style={styles.stepBadge}><Text style={styles.stepNum}>3</Text></View>
-            <Text style={styles.stepTitle}>Number of Seats</Text>
-          </View>
-          <View style={styles.seatRow}>
+          <StepLabel num="3" title="NUMBER OF GUESTS" done={true} />
+          <View style={styles.seatSelector}>
             <TouchableOpacity
-              style={styles.seatCtrlBtn}
+              style={[styles.seatBtn, selectedSeats <= 1 && styles.seatBtnDisabled]}
               onPress={() => selectedSeats > 1 && setSelectedSeats(selectedSeats - 1)}
+              disabled={selectedSeats <= 1}
             >
-              <Icon name="minus" size={22} color="#FF6B35" />
+              <Icon name="minus" size={18} color={selectedSeats <= 1 ? Colors.textMuted : Colors.textPrimary} />
             </TouchableOpacity>
+
             <View style={styles.seatCount}>
-              <Icon name="seat" size={24} color="#FF6B35" />
-              <Text style={styles.seatCountText}>{selectedSeats}</Text>
+              <Text style={styles.seatCountNum}>{selectedSeats}</Text>
+              <Text style={styles.seatCountLabel}>{selectedSeats === 1 ? 'guest' : 'guests'}</Text>
             </View>
+
             <TouchableOpacity
-              style={styles.seatCtrlBtn}
+              style={[styles.seatBtn, selectedSeats >= 10 && styles.seatBtnDisabled]}
               onPress={() => selectedSeats < 10 && setSelectedSeats(selectedSeats + 1)}
+              disabled={selectedSeats >= 10}
             >
-              <Icon name="plus" size={22} color="#FF6B35" />
+              <Icon name="plus" size={18} color={selectedSeats >= 10 ? Colors.textMuted : Colors.textPrimary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.seatHint}>Max 10 seats per booking</Text>
+          <Text style={styles.seatHint}>Maximum 10 guests per reservation</Text>
         </View>
 
         {/* Summary */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Booking Summary</Text>
+          <Text style={styles.summaryTitle}>BOOKING SUMMARY</Text>
           {[
-            { label: 'Restaurant', val: r.name },
-            { label: 'Date', val: formatDate(selectedDate) },
-            { label: 'Time', val: selectedTime || 'Not selected' },
-            { label: 'Seats', val: `${selectedSeats} seat${selectedSeats > 1 ? 's' : ''}` },
+            { label: 'Restaurant', value: r.name },
+            { label: 'Date', value: formatDate(selectedDate) },
+            { label: 'Time', value: selectedTime || '—' },
+            { label: 'Guests', value: `${selectedSeats} ${selectedSeats === 1 ? 'person' : 'persons'}` },
+            { label: 'Per Seat', value: `₹${SEAT_PRICE}` },
           ].map(item => (
             <View key={item.label} style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{item.label}</Text>
-              <Text style={styles.summaryVal}>{item.val}</Text>
+              <Text style={styles.summaryValue}>{item.value}</Text>
             </View>
           ))}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalVal}>₹{(selectedSeats * SEAT_PRICE).toLocaleString()}</Text>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>₹{totalAmount.toLocaleString()}</Text>
           </View>
         </View>
+
       </ScrollView>
 
-      {/* Proceed Button */}
+      {/* CTA */}
       <View style={styles.bottomBar}>
         <View>
-          <Text style={styles.priceLabel}>Total</Text>
-          <Text style={styles.priceValue}>₹{(selectedSeats * SEAT_PRICE).toLocaleString()}</Text>
+          <Text style={styles.totalBarLabel}>TOTAL AMOUNT</Text>
+          <Text style={styles.totalBarValue}>₹{totalAmount.toLocaleString()}</Text>
         </View>
-        <TouchableOpacity style={styles.proceedBtn} onPress={handleProceed}>
-          <Text style={styles.proceedBtnText}>Proceed to Pay</Text>
-          <Icon name="arrow-right" size={20} color="#fff" />
+        <TouchableOpacity style={styles.proceedBtn} onPress={handleProceed} activeOpacity={0.85}>
+          <Text style={styles.proceedBtnText}>CONTINUE</Text>
+          <Icon name="arrow-right" size={16} color={Colors.textInverse} />
         </TouchableOpacity>
       </View>
     </View>
@@ -202,83 +200,88 @@ const BookingScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A0A2E' },
+  container: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 16,
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bg,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  scroll: { padding: 16, paddingBottom: 100 },
-  restaurantBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#231040', borderRadius: 12, padding: 14, marginBottom: 16,
-    borderWidth: 1, borderColor: '#FF6B3540',
-  },
-  restaurantName: { color: '#FF6B35', fontWeight: '700', fontSize: 15 },
+  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
+  headerSub: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', marginTop: 1 },
+  scroll: { padding: 20, paddingBottom: 110 },
   stepCard: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18, marginBottom: 16,
-    borderWidth: 1, borderColor: '#2D1B69',
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 18, marginBottom: 16,
+    borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
   },
-  stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  stepLabel: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   stepBadge: {
-    width: 26, height: 26, borderRadius: 13, backgroundColor: '#FF6B35',
+    width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.bgDark,
     justifyContent: 'center', alignItems: 'center',
   },
-  stepNum: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  stepTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  dateBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#1A0A2E', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14,
-    borderWidth: 1, borderColor: '#3D2B80',
+  stepBadgeDone: { backgroundColor: Colors.success },
+  stepNum: { fontSize: 11, fontWeight: '700', color: Colors.textInverse },
+  stepTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1 },
+  datePicker: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceWarm, borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  dateBtnText: { flex: 1, color: '#FFFFFF', fontSize: 15 },
-  slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  slotChip: {
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
-    backgroundColor: '#1A0A2E', borderWidth: 1, borderColor: '#3D2B80', alignItems: 'center',
+  dateLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 4 },
+  dateValue: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  slot: {
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceWarm,
+    alignItems: 'center', minWidth: 72,
   },
-  slotChipSelected: { backgroundColor: '#FF6B35', borderColor: '#FF6B35' },
-  slotChipFull: { backgroundColor: '#1A0A2E', borderColor: '#3D2B80', opacity: 0.5 },
-  slotTime: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  slotTimeSelected: { color: '#FFFFFF' },
-  slotTimeFull: { color: '#4A3D6B' },
-  slotSeats: { color: '#8B7BA8', fontSize: 11, marginTop: 2 },
-  slotSeatsSelected: { color: '#fff' },
-  slotSeatsFull: { color: '#4A3D6B' },
-  seatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24 },
-  seatCtrlBtn: {
-    width: 44, height: 44, borderRadius: 22, borderWidth: 2,
-    borderColor: '#FF6B35', justifyContent: 'center', alignItems: 'center',
+  slotSelected: { backgroundColor: Colors.bgDark, borderColor: Colors.bgDark },
+  slotFull: { opacity: 0.4 },
+  slotTime: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  slotTimeSelected: { color: Colors.textInverse },
+  slotTimeFull: { color: Colors.textMuted },
+  slotSeats: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  slotSeatsSelected: { color: 'rgba(248,245,240,0.7)' },
+  slotSeatsFull: { color: Colors.textMuted },
+  slotSelectedNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  slotSelectedNoteText: { fontSize: 12, color: Colors.success, fontWeight: '500' },
+  seatSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32 },
+  seatBtn: {
+    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border,
+    justifyContent: 'center', alignItems: 'center',
   },
-  seatCount: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  seatCountText: { color: '#FFFFFF', fontSize: 36, fontWeight: '800' },
-  seatHint: { color: '#4A3D6B', fontSize: 12, textAlign: 'center', marginTop: 12 },
+  seatBtnDisabled: { borderColor: Colors.border, opacity: 0.4 },
+  seatCount: { alignItems: 'center' },
+  seatCountNum: { fontSize: 40, fontWeight: '700', color: Colors.textPrimary, lineHeight: 44 },
+  seatCountLabel: { fontSize: 12, color: Colors.textMuted },
+  seatHint: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 12 },
   summaryCard: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#2D1B69',
+    backgroundColor: Colors.surfaceWarm, borderRadius: 14, padding: 18,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  summaryTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 14 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  summaryLabel: { color: '#8B7BA8', fontSize: 14 },
-  summaryVal: { color: '#FFFFFF', fontSize: 14 },
-  totalRow: {
+  summaryTitle: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 14 },
+  summaryRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingTop: 14, marginTop: 8, borderTopWidth: 1, borderTopColor: '#2D1B69',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  totalLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  totalVal: { color: '#FF6B35', fontSize: 20, fontWeight: '800' },
+  summaryLabel: { fontSize: 13, color: Colors.textSecondary },
+  summaryValue: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14 },
+  totalLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  totalValue: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#231040', padding: 16, borderTopWidth: 1, borderTopColor: '#2D1B69',
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: Colors.surface, paddingHorizontal: 20, paddingVertical: 16,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...Shadow.lg,
   },
-  priceLabel: { color: '#8B7BA8', fontSize: 12 },
-  priceValue: { color: '#FF6B35', fontSize: 22, fontWeight: '800' },
+  totalBarLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 2 },
+  totalBarValue: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
   proceedBtn: {
-    backgroundColor: '#FF6B35', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24,
+    backgroundColor: Colors.bgDark, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 14,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
-  proceedBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  proceedBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textInverse, letterSpacing: 1.5 },
 });
 
 export default BookingScreen;

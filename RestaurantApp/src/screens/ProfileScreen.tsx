@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, StatusBar,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
+import { Colors, Shadow } from '../utils/theme';
 
 const ProfileScreen = () => {
   const { user, logout } = useAuth();
@@ -10,32 +13,44 @@ const ProfileScreen = () => {
 
   const bookings = getUserBookings(user?.id || '');
   const confirmed = bookings.filter(b => b.bookingStatus === 'confirmed').length;
-  const completed = bookings.filter(b => b.bookingStatus === 'completed').length;
   const totalPaid = bookings.filter(b => b.paymentStatus === 'paid').reduce((s, b) => s + b.totalAmount, 0);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: logout },
+      { text: 'Sign Out', style: 'destructive', onPress: logout },
     ]);
   };
 
-  const MenuItem = ({ icon, label, value, color = '#8B7BA8' }: any) => (
-    <View style={styles.menuItem}>
-      <View style={[styles.menuIcon, { backgroundColor: color + '20' }]}>
-        <Icon name={icon} size={20} color={color} />
+  interface RowProps { icon: string; label: string; value?: string; danger?: boolean; onPress?: () => void; }
+  const MenuRow = ({ icon, label, value, danger, onPress }: RowProps) => (
+    <TouchableOpacity
+      style={styles.menuRow}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={[styles.menuIcon, danger && styles.menuIconDanger]}>
+        <Icon name={icon} size={17} color={danger ? Colors.danger : Colors.textSecondary} />
       </View>
-      <Text style={styles.menuLabel}>{label}</Text>
-      {value && <Text style={styles.menuValue}>{value}</Text>}
-    </View>
+      <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
+      <View style={styles.menuRight}>
+        {value && <Text style={styles.menuValue}>{value}</Text>}
+        {onPress && <Icon name="chevron-right" size={16} color={Colors.textMuted} />}
+      </View>
+    </TouchableOpacity>
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase()}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
+
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={styles.avatarRing}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase()}</Text>
+          </View>
         </View>
         <Text style={styles.userName}>{user?.name}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
@@ -44,84 +59,111 @@ const ProfileScreen = () => {
 
       {/* Stats */}
       <View style={styles.statsRow}>
-        {[
-          { label: 'Total', val: bookings.length, icon: 'calendar-check', color: '#8B7BA8' },
-          { label: 'Active', val: confirmed, icon: 'calendar-clock', color: '#4CAF50' },
-          { label: 'Spent', val: `₹${totalPaid.toLocaleString()}`, icon: 'cash', color: '#FF6B35' },
-        ].map(s => (
-          <View key={s.label} style={styles.statBox}>
-            <Icon name={s.icon} size={22} color={s.color} />
-            <Text style={[styles.statVal, { color: s.color }]}>{s.val}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{bookings.length}</Text>
+          <Text style={styles.statLabel}>TOTAL</Text>
+        </View>
+        <View style={[styles.statCard, styles.statCardMiddle]}>
+          <Text style={[styles.statValue, { color: Colors.success }]}>{confirmed}</Text>
+          <Text style={styles.statLabel}>ACTIVE</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, { color: Colors.gold }]}>
+            ₹{totalPaid > 0 ? (totalPaid / 1000).toFixed(1) + 'k' : '0'}
+          </Text>
+          <Text style={styles.statLabel}>SPENT</Text>
+        </View>
       </View>
 
-      {/* Account Info */}
+      {/* Account section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Details</Text>
-        <MenuItem icon="account" label="Full Name" value={user?.name} color="#FF6B35" />
-        <MenuItem icon="email-outline" label="Email" value={user?.email} color="#3F80FF" />
-        <MenuItem icon="phone-outline" label="Phone" value={user?.phone} color="#4CAF50" />
+        <Text style={styles.sectionLabel}>ACCOUNT</Text>
+        <View style={styles.menuCard}>
+          <MenuRow icon="account-outline" label="Full Name" value={user?.name} />
+          <View style={styles.menuDivider} />
+          <MenuRow icon="email-outline" label="Email" value={user?.email} />
+          <View style={styles.menuDivider} />
+          <MenuRow icon="phone-outline" label="Phone" value={user?.phone} />
+        </View>
       </View>
 
-      {/* App Info */}
+      {/* App section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <MenuItem icon="information-outline" label="App Version" value="1.0.0" color="#8B7BA8" />
-        <MenuItem icon="shield-check-outline" label="Privacy Policy" color="#8B7BA8" />
-        <MenuItem icon="file-document-outline" label="Terms of Service" color="#8B7BA8" />
+        <Text style={styles.sectionLabel}>APP</Text>
+        <View style={styles.menuCard}>
+          <MenuRow icon="bell-outline" label="Notifications" onPress={() => {}} />
+          <View style={styles.menuDivider} />
+          <MenuRow icon="shield-outline" label="Privacy Policy" onPress={() => {}} />
+          <View style={styles.menuDivider} />
+          <MenuRow icon="file-document-outline" label="Terms of Service" onPress={() => {}} />
+          <View style={styles.menuDivider} />
+          <MenuRow icon="information-outline" label="Version" value="1.0.0" />
+        </View>
       </View>
 
       {/* Logout */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Icon name="logout" size={20} color="#FF4444" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+      <View style={styles.section}>
+        <View style={styles.menuCard}>
+          <MenuRow icon="logout" label="Sign Out" danger onPress={handleLogout} />
+        </View>
+      </View>
 
-      <Text style={styles.footer}>TableVault v1.0 · Made with ❤️ in India</Text>
+      <Text style={styles.footer}>TableVault  ·  Made with care in India</Text>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A0A2E' },
-  scroll: { paddingBottom: 30 },
-  profileHeader: {
-    alignItems: 'center', paddingTop: 60, paddingBottom: 28, paddingHorizontal: 20,
+  container: { flex: 1, backgroundColor: Colors.bg },
+  scroll: { paddingBottom: 40 },
+  hero: {
+    backgroundColor: Colors.bgDark, alignItems: 'center',
+    paddingTop: 54, paddingBottom: 32, paddingHorizontal: 20,
+  },
+  avatarRing: {
+    width: 90, height: 90, borderRadius: 45,
+    borderWidth: 2, borderColor: Colors.gold,
+    padding: 3, marginBottom: 14,
   },
   avatar: {
-    width: 90, height: 90, borderRadius: 45, backgroundColor: '#FF6B35',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
-    borderWidth: 3, borderColor: '#FF6B3580',
+    flex: 1, borderRadius: 42, backgroundColor: Colors.gold,
+    justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { color: '#fff', fontSize: 36, fontWeight: '800' },
-  userName: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 },
-  userEmail: { fontSize: 14, color: '#8B7BA8', marginBottom: 2 },
-  userPhone: { fontSize: 14, color: '#8B7BA8' },
-  statsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
-  statBox: {
-    flex: 1, backgroundColor: '#231040', borderRadius: 16, padding: 16,
-    alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#2D1B69',
+  avatarText: { fontSize: 30, fontWeight: '700', color: Colors.bgDark },
+  userName: { fontSize: 20, fontWeight: '700', color: '#F8F5F0', marginBottom: 4 },
+  userEmail: { fontSize: 13, color: '#78716C', marginBottom: 2 },
+  userPhone: { fontSize: 13, color: '#78716C' },
+
+  statsRow: {
+    flexDirection: 'row', marginHorizontal: 20, marginTop: -1,
+    backgroundColor: Colors.surface, borderRadius: 14, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 24, ...Shadow.md,
   },
-  statVal: { fontSize: 20, fontWeight: '800' },
-  statLabel: { color: '#8B7BA8', fontSize: 12 },
-  section: { paddingHorizontal: 16, marginBottom: 16 },
-  sectionTitle: { color: '#8B7BA8', fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 8, marginLeft: 4 },
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#231040',
-    borderRadius: 14, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: '#2D1B69', gap: 12,
+  statCard: { flex: 1, alignItems: 'center', paddingVertical: 18 },
+  statCardMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
+  statValue: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 3 },
+  statLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1 },
+
+  section: { paddingHorizontal: 20, marginBottom: 20 },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 10 },
+  menuCard: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', ...Shadow.sm,
   },
-  menuIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  menuLabel: { flex: 1, color: '#FFFFFF', fontSize: 14 },
-  menuValue: { color: '#8B7BA8', fontSize: 13 },
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16,
-    backgroundColor: '#FF444420', borderRadius: 14, paddingVertical: 16,
-    justifyContent: 'center', borderWidth: 1, borderColor: '#FF444440', marginBottom: 20,
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 15, gap: 12 },
+  menuIcon: {
+    width: 36, height: 36, borderRadius: 9, backgroundColor: Colors.surfaceWarm,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  logoutText: { color: '#FF4444', fontWeight: '700', fontSize: 15 },
-  footer: { color: '#4A3D6B', textAlign: 'center', fontSize: 12 },
+  menuIconDanger: { backgroundColor: Colors.dangerBg, borderColor: Colors.dangerBg },
+  menuLabel: { flex: 1, fontSize: 14, color: Colors.textPrimary },
+  menuLabelDanger: { color: Colors.danger },
+  menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  menuValue: { fontSize: 13, color: Colors.textMuted, maxWidth: 150 },
+  menuDivider: { height: 1, backgroundColor: Colors.border, marginLeft: 64 },
+
+  footer: { textAlign: 'center', fontSize: 11, color: Colors.textMuted, letterSpacing: 0.5 },
 });
 
 export default ProfileScreen;

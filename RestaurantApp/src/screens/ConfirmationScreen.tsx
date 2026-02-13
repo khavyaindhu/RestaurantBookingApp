@@ -1,170 +1,193 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Share,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Share, ScrollView, StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Booking } from '../context/BookingContext';
+import { Colors, Shadow } from '../utils/theme';
 
 const ConfirmationScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { booking }: { booking: Booking } = route.params;
 
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(40)).current;
 
   useEffect(() => {
     Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 1, friction: 4, tension: 60, useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1, duration: 400, useNativeDriver: true,
-      }),
+      Animated.spring(checkScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(contentFade, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(cardSlide, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]),
     ]).start();
   }, []);
 
   const handleShare = async () => {
     await Share.share({
-      message:
-        `🎉 Table Reserved!\n\n` +
-        `Restaurant: ${booking.restaurantName}\n` +
-        `Date: ${booking.date}\n` +
-        `Time: ${booking.time}\n` +
-        `Seats: ${booking.seats}\n` +
-        `Confirmation Code: ${booking.confirmationCode}\n\n` +
-        `Booked via TableVault`,
+      message: `🎉 Table Reserved!\n\nRestaurant: ${booking.restaurantName}\nDate: ${booking.date}\nTime: ${booking.time}\nGuests: ${booking.seats}\nConfirmation: ${booking.confirmationCode}\n\nSee you at the table!`,
     });
   };
 
   const goHome = () => {
-    navigation.dispatch(CommonActions.reset({
-      index: 0, routes: [{ name: 'Main' }],
-    }));
+    navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Main' }] }));
   };
 
   return (
     <View style={styles.container}>
-      {/* Success Icon */}
-      <Animated.View style={[styles.successCircle, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.successInner}>
-          <Icon name="check-bold" size={50} color="#4CAF50" />
-        </View>
-      </Animated.View>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bgDark} />
 
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Text style={styles.title}>Booking Confirmed!</Text>
-        <Text style={styles.subtitle}>
-          {booking.paymentStatus === 'paid'
-            ? '🎉 Payment successful! Your table is reserved.'
-            : '✅ Your table is reserved. Pay at the restaurant.'}
+      {/* Dark top section */}
+      <View style={styles.topSection}>
+        <Animated.View style={[styles.checkCircle, { transform: [{ scale: checkScale }] }]}>
+          <Icon name="check" size={36} color={Colors.bgDark} />
+        </Animated.View>
+        <Text style={styles.successTitle}>Reservation Confirmed</Text>
+        <Text style={styles.successSub}>
+          {booking.paymentStatus === 'paid' ? 'Payment received · ' : 'Pay at restaurant · '}
+          Your table is secured
         </Text>
+      </View>
 
-        {/* Confirmation Code */}
-        <View style={styles.codeCard}>
-          <Text style={styles.codeLabel}>Confirmation Code</Text>
-          <Text style={styles.codeValue}>{booking.confirmationCode}</Text>
-          <Text style={styles.codeHint}>Show this at the restaurant</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.View style={{ opacity: contentFade, transform: [{ translateY: cardSlide }] }}>
 
-        {/* Details */}
-        <View style={styles.detailsCard}>
-          {[
-            { icon: 'silverware-fork-knife', label: 'Restaurant', val: booking.restaurantName },
-            { icon: 'calendar', label: 'Date', val: booking.date },
-            { icon: 'clock-outline', label: 'Time', val: booking.time },
-            { icon: 'seat', label: 'Seats', val: `${booking.seats} seat${booking.seats > 1 ? 's' : ''}` },
-            {
-              icon: 'cash', label: 'Payment',
-              val: booking.paymentStatus === 'paid'
-                ? `✅ Paid ₹${booking.totalAmount.toLocaleString()}`
-                : '⏳ Pay at restaurant',
-            },
-          ].map(item => (
-            <View key={item.label} style={styles.detailRow}>
-              <View style={styles.detailLeft}>
-                <Icon name={item.icon} size={16} color="#FF6B35" />
-                <Text style={styles.detailLabel}>{item.label}</Text>
-              </View>
-              <Text style={styles.detailVal}>{item.val}</Text>
+          {/* Code card */}
+          <View style={styles.codeCard}>
+            <Text style={styles.codeLabel}>CONFIRMATION CODE</Text>
+            <Text style={styles.codeValue}>{booking.confirmationCode}</Text>
+            <Text style={styles.codeHint}>Show this code at the restaurant</Text>
+            {/* Barcode-like decoration */}
+            <View style={styles.barcodeRow}>
+              {Array.from({ length: 28 }, (_, i) => (
+                <View key={i} style={[styles.barcodeLine, { height: i % 3 === 0 ? 24 : i % 2 === 0 ? 18 : 12 }]} />
+              ))}
             </View>
-          ))}
-        </View>
+          </View>
 
-        {/* SMS/Email note */}
-        <View style={styles.notifBox}>
-          <Icon name="bell-check-outline" size={18} color="#FF6B35" />
-          <Text style={styles.notifText}>Confirmation sent via SMS & Email to your registered details</Text>
-        </View>
+          {/* Details */}
+          <View style={styles.detailsCard}>
+            <Text style={styles.detailsTitle}>RESERVATION DETAILS</Text>
+            {[
+              { icon: 'silverware-fork-knife', label: 'Restaurant', value: booking.restaurantName },
+              { icon: 'calendar-outline', label: 'Date', value: booking.date },
+              { icon: 'clock-outline', label: 'Time', value: booking.time },
+              { icon: 'account-group-outline', label: 'Guests', value: `${booking.seats} ${booking.seats === 1 ? 'person' : 'persons'}` },
+              {
+                icon: 'cash-check', label: 'Payment',
+                value: booking.paymentStatus === 'paid'
+                  ? `Paid  ₹${booking.totalAmount.toLocaleString()}`
+                  : 'Pay at restaurant',
+              },
+            ].map((item, idx, arr) => (
+              <View key={item.label} style={[styles.detailRow, idx === arr.length - 1 && styles.detailRowLast]}>
+                <View style={styles.detailLeft}>
+                  <Icon name={item.icon} size={15} color={Colors.gold} />
+                  <Text style={styles.detailLabel}>{item.label}</Text>
+                </View>
+                <Text style={[
+                  styles.detailValue,
+                  item.label === 'Payment' && booking.paymentStatus === 'paid' && styles.detailValueGreen,
+                ]}>
+                  {item.value}
+                </Text>
+              </View>
+            ))}
+          </View>
 
-        {/* Actions */}
-        <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Icon name="share-variant" size={18} color="#FF6B35" />
-          <Text style={styles.shareBtnText}>Share Booking</Text>
-        </TouchableOpacity>
+          {/* Notification note */}
+          <View style={styles.notifCard}>
+            <Icon name="bell-ring-outline" size={16} color={Colors.gold} />
+            <Text style={styles.notifText}>
+              A confirmation has been sent to <Text style={{ fontWeight: '700' }}>SMS & Email</Text> registered with your account.
+            </Text>
+          </View>
 
-        <TouchableOpacity style={styles.homeBtn} onPress={goHome}>
-          <Icon name="home" size={18} color="#fff" />
-          <Text style={styles.homeBtnText}>Back to Home</Text>
-        </TouchableOpacity>
-      </Animated.View>
+          {/* Actions */}
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+            <Icon name="share-variant-outline" size={16} color={Colors.textPrimary} />
+            <Text style={styles.shareBtnText}>SHARE BOOKING</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.homeBtn} onPress={goHome} activeOpacity={0.85}>
+            <Text style={styles.homeBtnText}>BACK TO HOME</Text>
+          </TouchableOpacity>
+
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1, backgroundColor: '#1A0A2E',
-    paddingHorizontal: 20, paddingTop: 60, alignItems: 'center',
+  container: { flex: 1, backgroundColor: Colors.bg },
+  topSection: {
+    backgroundColor: Colors.bgDark, paddingTop: 60, paddingBottom: 36,
+    alignItems: 'center', gap: 12,
   },
-  successCircle: {
-    width: 120, height: 120, borderRadius: 60,
-    backgroundColor: '#4CAF5020', borderWidth: 3, borderColor: '#4CAF50',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
+  checkCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: Colors.gold,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
   },
-  successInner: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: '#4CAF5030', justifyContent: 'center', alignItems: 'center',
-  },
-  content: { width: '100%', alignItems: 'center' },
-  title: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#8B7BA8', textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 },
+  successTitle: { fontSize: 22, fontWeight: '700', color: '#F8F5F0' },
+  successSub: { fontSize: 13, color: '#78716C' },
+
+  scroll: { padding: 20, paddingBottom: 40 },
+
   codeCard: {
-    backgroundColor: '#FF6B3515', borderRadius: 16, padding: 20,
-    borderWidth: 2, borderColor: '#FF6B35', alignItems: 'center', width: '100%', marginBottom: 16,
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 24,
+    alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
+    marginBottom: 16, ...Shadow.md,
   },
-  codeLabel: { color: '#8B7BA8', fontSize: 12, marginBottom: 8 },
-  codeValue: { fontSize: 32, fontWeight: '800', color: '#FF6B35', letterSpacing: 4 },
-  codeHint: { color: '#8B7BA8', fontSize: 12, marginTop: 8 },
+  codeLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 2, marginBottom: 10 },
+  codeValue: {
+    fontSize: 36, fontWeight: '700', color: Colors.textPrimary,
+    letterSpacing: 6, marginBottom: 6,
+  },
+  codeHint: { fontSize: 11, color: Colors.textMuted, marginBottom: 20 },
+  barcodeRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 2.5,
+    paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.border, width: '100%', justifyContent: 'center',
+  },
+  barcodeLine: { width: 2.5, backgroundColor: Colors.border, borderRadius: 1 },
+
   detailsCard: {
-    backgroundColor: '#231040', borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: '#2D1B69', width: '100%', marginBottom: 14,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 18,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 14, ...Shadow.sm,
   },
+  detailsTitle: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 14 },
   detailRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#2D1B6940',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
+  detailRowLast: { borderBottomWidth: 0 },
   detailLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailLabel: { color: '#8B7BA8', fontSize: 13 },
-  detailVal: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
-  notifBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FF6B3510', borderRadius: 10, padding: 12,
-    borderWidth: 1, borderColor: '#FF6B3530', width: '100%', marginBottom: 16,
+  detailLabel: { fontSize: 13, color: Colors.textSecondary },
+  detailValue: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary, maxWidth: '55%', textAlign: 'right' },
+  detailValueGreen: { color: Colors.success },
+
+  notifCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#FEF9EC', borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: Colors.goldLight, marginBottom: 20,
   },
-  notifText: { color: '#C4B5E0', fontSize: 12, flex: 1 },
+  notifText: { fontSize: 12, color: Colors.textSecondary, flex: 1, lineHeight: 18 },
+
   shareBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
-    borderRadius: 12, paddingVertical: 14, justifyContent: 'center',
-    borderWidth: 1, borderColor: '#FF6B35', marginBottom: 10,
+    borderRadius: 10, paddingVertical: 14, alignItems: 'center',
+    borderWidth: 1.5, borderColor: Colors.bgDark, marginBottom: 10,
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
   },
-  shareBtnText: { color: '#FF6B35', fontWeight: '700', fontSize: 15 },
+  shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 1.5 },
   homeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
-    backgroundColor: '#FF6B35', borderRadius: 12, paddingVertical: 16, justifyContent: 'center',
+    backgroundColor: Colors.bgDark, borderRadius: 10, paddingVertical: 16,
+    alignItems: 'center',
   },
-  homeBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  homeBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textInverse, letterSpacing: 1.5 },
 });
 
 export default ConfirmationScreen;
