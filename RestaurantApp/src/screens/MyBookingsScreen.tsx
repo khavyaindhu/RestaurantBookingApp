@@ -1,11 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, StatusBar,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Platform, Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useBooking, Booking } from '../context/BookingContext';
 import { Colors, Shadow } from '../utils/theme';
+
+declare const window: any;
 
 const STATUS = {
   confirmed: { color: Colors.success,  bg: Colors.successBg, icon: 'check-circle-outline',  label: 'Confirmed' },
@@ -51,7 +54,7 @@ const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => 
       {/* Payment row */}
       <View style={styles.cardPayRow}>
         <Text style={styles.cardPayLabel}>
-          {booking.paymentStatus === 'paid' ? '✓ Paid' : 'Pay at restaurant'}
+          {booking.paymentStatus === 'paid' ? 'Paid' : 'Pay at restaurant'}
         </Text>
         {booking.paymentStatus === 'paid' && (
           <Text style={styles.cardPayAmount}>₹{booking.totalAmount.toLocaleString()}</Text>
@@ -60,7 +63,8 @@ const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => 
 
       {/* Cancel */}
       {booking.bookingStatus === 'confirmed' && (
-        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+          <Icon name="close-circle-outline" size={16} color={Colors.danger} />
           <Text style={styles.cancelBtnText}>Cancel Reservation</Text>
         </TouchableOpacity>
       )}
@@ -71,18 +75,92 @@ const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => 
 const MyBookingsScreen = () => {
   const { user } = useAuth();
   const { getUserBookings, cancelBooking } = useBooking();
-  const bookings = useMemo(() => getUserBookings(user?.id || ''), [user?.id]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  const bookings = useMemo(() => {
+    console.log('Fetching bookings for user:', user?.id);
+    const userBookings = getUserBookings(user?.id || '');
+    console.log('Current bookings:', userBookings);
+    return userBookings;
+  }, [user?.id, refreshKey]);
 
-  const handleCancel = (b: Booking) => {
-    Alert.alert(
-      'Cancel Reservation',
-      `Cancel your table at ${b.restaurantName} on ${b.date}?`,
-      [
-        { text: 'Keep Reservation', style: 'cancel' },
-        { text: 'Cancel', style: 'destructive', onPress: () => cancelBooking(b.id) },
-      ]
-    );
+  const showConfirmDialog = (
+    message: string,
+    onConfirm: () => void,
+    onCancel?: () => void
+  ) => {
+    if (Platform.OS === 'web') {
+      // For web platform, use confirm dialog
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        const confirmed = window.confirm(message);
+        if (confirmed) {
+          onConfirm();
+        } else if (onCancel) {
+          onCancel();
+        }
+      } else {
+        // Fallback if window is not available
+        onConfirm();
+      }
+    } else {
+      // For native platforms, use Alert
+      Alert.alert(
+        'Cancel Reservation',
+        message,
+        [
+          {
+            text: 'Keep Reservation',
+            style: 'cancel',
+            onPress: onCancel,
+          },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: onConfirm,
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
+
+  const handleCancel = useCallback((booking: Booking) => {
+    console.log('handleCancel called for booking:', booking.id);
+    
+    const message = `Are you sure you want to cancel your table at ${booking.restaurantName} on ${booking.date} at ${booking.time}?`;
+    
+    showConfirmDialog(
+      message,
+      // On confirm
+      () => {
+        console.log('User confirmed cancellation');
+        try {
+          cancelBooking(booking.id);
+          console.log('cancelBooking executed');
+          
+          // Force refresh
+          setRefreshKey(prev => prev + 1);
+          
+          Toast.show({ 
+            type: 'success', 
+            text1: 'Reservation Cancelled',
+            text2: `Your booking at ${booking.restaurantName} has been cancelled`
+          });
+        } catch (error) {
+          console.error('Error cancelling booking:', error);
+          Toast.show({ 
+            type: 'error', 
+            text1: 'Cancellation Failed',
+            text2: 'Please try again'
+          });
+        }
+      },
+      // On cancel
+      () => {
+        console.log('User cancelled the cancellation');
+      }
+    );
+  }, [cancelBooking]);
 
   return (
     <View style={styles.container}>
@@ -90,13 +168,22 @@ const MyBookingsScreen = () => {
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Reservations</Text>
-        <Text style={styles.headerSub}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerSub}>{bookings.length} {bookings.length === 1 ? 'booking' : 'bookings'}</Text>
       </View>
 
       <FlatList
         data={bookings}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => <BookingCard booking={item} onCancel={() => handleCancel(item)} />}
+        extraData={refreshKey}
+        renderItem={({ item }) => (
+          <BookingCard 
+            booking={item} 
+            onCancel={() => {
+              console.log('BookingCard onCancel triggered');
+              handleCancel(item);
+            }} 
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -143,10 +230,22 @@ const styles = StyleSheet.create({
   cardPayLabel: { fontSize: 12, color: Colors.textSecondary },
   cardPayAmount: { fontSize: 14, fontWeight: '700', color: Colors.success },
   cancelBtn: {
-    marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border,
+    marginTop: 14, 
+    paddingTop: 14, 
+    paddingBottom: 2,
+    borderTopWidth: 1, 
+    borderTopColor: Colors.border,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
   },
-  cancelBtnText: { fontSize: 12, fontWeight: '600', color: Colors.danger, letterSpacing: 0.5 },
+  cancelBtnText: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: Colors.danger, 
+    letterSpacing: 0.3 
+  },
   emptyState: { alignItems: 'center', paddingTop: 80, gap: 10 },
   emptyIcon: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.surfaceWarm,
