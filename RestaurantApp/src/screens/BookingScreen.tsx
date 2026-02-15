@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Modal, Platform,
+  StatusBar, Modal, Platform, SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
-import {  TimeSlot } from '../context/BookingContext';
+import { TimeSlot } from '../context/BookingContext';
 import { useBooking } from '../context/BookingContext';
 
 import { Colors, Shadow } from '../utils/theme';
@@ -47,7 +47,6 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
     ...Array(firstDayOfMonth).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
-  // Pad to full 6 rows
   while (cells.length % 7 !== 0) cells.push(null);
 
   const checkDisabled = (day: number) => {
@@ -65,7 +64,6 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={calStyles.overlay}>
         <View style={calStyles.card}>
-          {/* Month Navigation */}
           <View style={calStyles.navRow}>
             <TouchableOpacity onPress={goBack} style={calStyles.navBtn}>
               <Icon name="chevron-left" size={22} color={Colors.textPrimary} />
@@ -76,14 +74,12 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
             </TouchableOpacity>
           </View>
 
-          {/* Day Labels */}
           <View style={calStyles.dayRow}>
             {DAY_LABELS.map(d => (
               <Text key={d} style={calStyles.dayLabel}>{d}</Text>
             ))}
           </View>
 
-          {/* Dates Grid */}
           <View style={calStyles.grid}>
             {cells.map((day, idx) => {
               const disabled = day ? checkDisabled(day) : true;
@@ -112,7 +108,6 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
             })}
           </View>
 
-          {/* Actions */}
           <View style={calStyles.actions}>
             <TouchableOpacity style={calStyles.cancelBtn} onPress={onCancel}>
               <Text style={calStyles.cancelText}>Cancel</Text>
@@ -129,7 +124,7 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
 
 const calStyles = StyleSheet.create({
   overlay: {
-    flex: 1, backgroundColor: 'rgba(28,25,23,0.6)',
+    flex: 1, backgroundColor: 'rgba(28,25,23,0.7)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   card: {
@@ -165,219 +160,209 @@ const calStyles = StyleSheet.create({
   confirmText: { fontSize: 13, fontWeight: '700', color: Colors.textInverse },
 });
 
-// ─── Main Booking Screen ──────────────────────────────────────────────────────
-const BookingScreen = () => {
-  const navigation = useNavigation<any>();
-  const {
-    selectedRestaurant, selectedDate, selectedTime, selectedSeats,
-    setSelectedDate, setSelectedTime, setSelectedSeats, getAvailableSlots,
-  } = useBooking();
+// ─── Booking Details Modal ────────────────────────────────────────────────────
+interface BookingModalProps {
+  visible: boolean;
+  restaurant: any;
+  selectedDate: Date;
+  selectedTime: string;
+  selectedSeats: number;
+  slots: TimeSlot[];
+  onDatePress: () => void;
+  onTimeSelect: (time: string) => void;
+  onSeatsChange: (seats: number) => void;
+  onClose: () => void;
+}
 
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const r = selectedRestaurant!;
-
-  useEffect(() => {
-    if (r) setSlots(getAvailableSlots(r.id, selectedDate));
-  }, [selectedDate, r]);
-
+const BookingDetailsModal = ({
+  visible, restaurant, selectedDate, selectedTime, selectedSeats,
+  slots, onDatePress, onTimeSelect, onSeatsChange, onClose
+}: BookingModalProps) => {
+  
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const handleProceed = () => {
-    if (!selectedTime) {
-      Toast.show({ type: 'error', text1: 'Please select a time slot' }); return;
-    }
-    const slot = slots.find(s => s.time === selectedTime);
-    if (!slot || slot.availableSeats < selectedSeats) {
-      Toast.show({ type: 'error', text1: 'Not enough seats for selected time' }); return;
-    }
-    navigation.navigate('Payment', {
-      bookingData: {
-        restaurantName: r.name,
-        date: selectedDate.toDateString(),
-        time: selectedTime,
-        seats: selectedSeats,
-        totalAmount: selectedSeats * SEAT_PRICE,
-      },
-    });
-  };
-
   const StepBadge = ({ num, done }: { num: string; done: boolean }) => (
-    <View style={[styles.stepBadge, done && styles.stepBadgeDone]}>
+    <View style={[modalStyles.stepBadge, done && modalStyles.stepBadgeDone]}>
       {done
         ? <Icon name="check" size={11} color="#fff" />
-        : <Text style={styles.stepNum}>{num}</Text>
+        : <Text style={modalStyles.stepNum}>{num}</Text>
       }
     </View>
   );
 
-  const totalAmount = selectedSeats * SEAT_PRICE;
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.bg} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="arrow-left" size={20} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.headerTitle}>Make a Reservation</Text>
-          <Text style={styles.headerSub}>{r?.name}</Text>
-        </View>
-        <View style={{ width: 36 }} />
-      </View>
-
-      <ScrollView 
-        contentContainerStyle={styles.scroll} 
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollView}
-      >
-
-        {/* Step 1 — Date */}
-        <View style={styles.stepCard}>
-          <View style={styles.stepLabelRow}>
-            <StepBadge num="1" done={true} />
-            <Text style={styles.stepTitle}>SELECT DATE</Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={modalStyles.overlay}>
+        <View style={modalStyles.container}>
+          {/* Header */}
+          <View style={modalStyles.header}>
+            <Text style={modalStyles.headerTitle}>Booking Details</Text>
+            <TouchableOpacity onPress={onClose} style={modalStyles.closeBtn}>
+              <Icon name="close" size={24} color={Colors.textPrimary} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.dateTrigger} onPress={() => setShowCalendar(true)} activeOpacity={0.8}>
-            <View>
-              <Text style={styles.dateSmLabel}>RESERVATION DATE</Text>
-              <Text style={styles.dateValue}>{formatDate(selectedDate)}</Text>
+
+          <ScrollView 
+            style={modalStyles.scroll}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
+            {/* Step 1 — Date */}
+            <View style={modalStyles.stepCard}>
+              <View style={modalStyles.stepLabelRow}>
+                <StepBadge num="1" done={true} />
+                <Text style={modalStyles.stepTitle}>SELECT DATE</Text>
+              </View>
+              <TouchableOpacity style={modalStyles.dateTrigger} onPress={onDatePress} activeOpacity={0.8}>
+                <View>
+                  <Text style={modalStyles.dateSmLabel}>RESERVATION DATE</Text>
+                  <Text style={modalStyles.dateValue}>{formatDate(selectedDate)}</Text>
+                </View>
+                <Icon name="calendar-outline" size={22} color={Colors.gold} />
+              </TouchableOpacity>
             </View>
-            <Icon name="calendar-outline" size={22} color={Colors.gold} />
-          </TouchableOpacity>
-        </View>
 
-        {/* Step 2 — Time Slots */}
-        <View style={styles.stepCard}>
-          <View style={styles.stepLabelRow}>
-            <StepBadge num="2" done={!!selectedTime} />
-            <Text style={styles.stepTitle}>SELECT TIME SLOT</Text>
-          </View>
-          <View style={styles.slotsGrid}>
-            {slots.map(slot => {
-              const isSel = selectedTime === slot.time;
-              const isFull = !slot.isAvailable;
-              return (
+            {/* Step 2 — Time Slots */}
+            <View style={modalStyles.stepCard}>
+              <View style={modalStyles.stepLabelRow}>
+                <StepBadge num="2" done={!!selectedTime} />
+                <Text style={modalStyles.stepTitle}>SELECT TIME SLOT</Text>
+              </View>
+              <View style={modalStyles.slotsGrid}>
+                {slots.map(slot => {
+                  const isSel = selectedTime === slot.time;
+                  const isFull = !slot.isAvailable;
+                  return (
+                    <TouchableOpacity
+                      key={slot.time}
+                      style={[modalStyles.slot, isSel && modalStyles.slotSel, isFull && modalStyles.slotFull]}
+                      onPress={() => !isFull && onTimeSelect(slot.time)}
+                      disabled={isFull}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[modalStyles.slotTime, isSel && modalStyles.slotTimeSel, isFull && modalStyles.slotTimeDis]}>
+                        {slot.time}
+                      </Text>
+                      <Text style={[modalStyles.slotSeats, isSel && modalStyles.slotSeatsSel, isFull && modalStyles.slotSeatsDis]}>
+                        {isFull ? 'Full' : `${slot.availableSeats} seats`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {selectedTime && (
+                <View style={modalStyles.selectedNote}>
+                  <Icon name="check-circle-outline" size={14} color={Colors.success} />
+                  <Text style={modalStyles.selectedNoteText}>{selectedTime} selected</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Step 3 — Guests */}
+            <View style={modalStyles.stepCard}>
+              <View style={modalStyles.stepLabelRow}>
+                <StepBadge num="3" done={true} />
+                <Text style={modalStyles.stepTitle}>NUMBER OF GUESTS</Text>
+              </View>
+              <View style={modalStyles.guestRow}>
                 <TouchableOpacity
-                  key={slot.time}
-                  style={[styles.slot, isSel && styles.slotSel, isFull && styles.slotFull]}
-                  onPress={() => !isFull && setSelectedTime(slot.time)}
-                  disabled={isFull}
-                  activeOpacity={0.75}
+                  style={[modalStyles.guestBtn, selectedSeats <= 1 && modalStyles.guestBtnDis]}
+                  onPress={() => selectedSeats > 1 && onSeatsChange(selectedSeats - 1)}
+                  disabled={selectedSeats <= 1}
                 >
-                  <Text style={[styles.slotTime, isSel && styles.slotTimeSel, isFull && styles.slotTimeDis]}>
-                    {slot.time}
-                  </Text>
-                  <Text style={[styles.slotSeats, isSel && styles.slotSeatsSel, isFull && styles.slotSeatsDis]}>
-                    {isFull ? 'Full' : `${slot.availableSeats} seats`}
-                  </Text>
+                  <Icon name="minus" size={18} color={selectedSeats <= 1 ? Colors.border : Colors.textPrimary} />
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-          {selectedTime && (
-            <View style={styles.selectedNote}>
-              <Icon name="check-circle-outline" size={14} color={Colors.success} />
-              <Text style={styles.selectedNoteText}>{selectedTime} selected</Text>
+                <View style={modalStyles.guestCount}>
+                  <Text style={modalStyles.guestNum}>{selectedSeats}</Text>
+                  <Text style={modalStyles.guestLabel}>{selectedSeats === 1 ? 'guest' : 'guests'}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[modalStyles.guestBtn, selectedSeats >= 10 && modalStyles.guestBtnDis]}
+                  onPress={() => selectedSeats < 10 && onSeatsChange(selectedSeats + 1)}
+                  disabled={selectedSeats >= 10}
+                >
+                  <Icon name="plus" size={18} color={selectedSeats >= 10 ? Colors.border : Colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={modalStyles.guestHint}>Up to 10 guests per reservation</Text>
             </View>
-          )}
-        </View>
 
-        {/* Step 3 — Guests */}
-        <View style={styles.stepCard}>
-          <View style={styles.stepLabelRow}>
-            <StepBadge num="3" done={true} />
-            <Text style={styles.stepTitle}>NUMBER OF GUESTS</Text>
-          </View>
-          <View style={styles.guestRow}>
-            <TouchableOpacity
-              style={[styles.guestBtn, selectedSeats <= 1 && styles.guestBtnDis]}
-              onPress={() => selectedSeats > 1 && setSelectedSeats(selectedSeats - 1)}
-              disabled={selectedSeats <= 1}
-            >
-              <Icon name="minus" size={18} color={selectedSeats <= 1 ? Colors.border : Colors.textPrimary} />
-            </TouchableOpacity>
-            <View style={styles.guestCount}>
-              <Text style={styles.guestNum}>{selectedSeats}</Text>
-              <Text style={styles.guestLabel}>{selectedSeats === 1 ? 'guest' : 'guests'}</Text>
+            {/* Summary */}
+            <View style={modalStyles.summaryCard}>
+              <Text style={modalStyles.summaryHeading}>BOOKING SUMMARY</Text>
+              {[
+                { label: 'Restaurant', val: restaurant?.name },
+                { label: 'Date', val: formatDate(selectedDate) },
+                { label: 'Time', val: selectedTime || '—' },
+                { label: 'Guests', val: `${selectedSeats} ${selectedSeats === 1 ? 'person' : 'persons'}` },
+                { label: 'Rate', val: `₹${SEAT_PRICE} / seat` },
+              ].map((item, i, arr) => (
+                <View key={item.label} style={[modalStyles.summRow, i === arr.length - 1 && modalStyles.summRowLast]}>
+                  <Text style={modalStyles.summLabel}>{item.label}</Text>
+                  <Text style={modalStyles.summValue}>{item.val}</Text>
+                </View>
+              ))}
+              <View style={modalStyles.totalRow}>
+                <Text style={modalStyles.totalLabel}>Total</Text>
+                <Text style={modalStyles.totalValue}>₹{(selectedSeats * SEAT_PRICE).toLocaleString()}</Text>
+              </View>
             </View>
-            <TouchableOpacity
-              style={[styles.guestBtn, selectedSeats >= 10 && styles.guestBtnDis]}
-              onPress={() => selectedSeats < 10 && setSelectedSeats(selectedSeats + 1)}
-              disabled={selectedSeats >= 10}
-            >
-              <Icon name="plus" size={18} color={selectedSeats >= 10 ? Colors.border : Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.guestHint}>Up to 10 guests per reservation</Text>
-        </View>
 
-        {/* Summary */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryHeading}>BOOKING SUMMARY</Text>
-          {[
-            { label: 'Restaurant', val: r?.name },
-            { label: 'Date', val: formatDate(selectedDate) },
-            { label: 'Time', val: selectedTime || '—' },
-            { label: 'Guests', val: `${selectedSeats} ${selectedSeats === 1 ? 'person' : 'persons'}` },
-            { label: 'Rate', val: `₹${SEAT_PRICE} / seat` },
-          ].map((item, i, arr) => (
-            <View key={item.label} style={[styles.summRow, i === arr.length - 1 && styles.summRowLast]}>
-              <Text style={styles.summLabel}>{item.label}</Text>
-              <Text style={styles.summValue}>{item.val}</Text>
-            </View>
-          ))}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₹{totalAmount.toLocaleString()}</Text>
-          </View>
+            <View style={{height: 20}} />
+          </ScrollView>
         </View>
-
-      </ScrollView>
-
-      {/* Bottom CTA */}
-      <View style={styles.bottomBar}>
-        <View>
-          <Text style={styles.bottomLabel}>TOTAL</Text>
-          <Text style={styles.bottomAmount}>₹{totalAmount.toLocaleString()}</Text>
-        </View>
-        <TouchableOpacity style={styles.proceedBtn} onPress={handleProceed} activeOpacity={0.85}>
-          <Text style={styles.proceedText}>CONTINUE</Text>
-          <Icon name="arrow-right" size={16} color="#fff" />
-        </TouchableOpacity>
       </View>
-
-      {/* Calendar Modal */}
-      <CalendarModal
-        visible={showCalendar}
-        currentDate={selectedDate}
-        onConfirm={date => { setShowCalendar(false); setSelectedDate(date); setSelectedTime(''); }}
-        onCancel={() => setShowCalendar(false)}
-      />
-    </View>
+    </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  scrollView: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bg,
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(28,25,23,0.5)',
+    justifyContent: 'flex-end',
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
-  scroll: { padding: 20, paddingBottom: 140 },
-
+  container: {
+    backgroundColor: Colors.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    ...Shadow.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scroll: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
   stepCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 18,
-    marginBottom: 16, borderWidth: 1, borderColor: Colors.border, ...Shadow.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.sm,
   },
   stepLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   stepBadge: {
@@ -387,7 +372,6 @@ const styles = StyleSheet.create({
   stepBadgeDone: { backgroundColor: Colors.success },
   stepNum: { fontSize: 11, fontWeight: '700', color: '#fff' },
   stepTitle: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1 },
-
   dateTrigger: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: Colors.surfaceWarm, borderRadius: 10, padding: 14,
@@ -395,7 +379,6 @@ const styles = StyleSheet.create({
   },
   dateSmLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 4 },
   dateValue: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slot: {
     paddingHorizontal: 12, paddingVertical: 9, borderRadius: 8,
@@ -412,7 +395,6 @@ const styles = StyleSheet.create({
   slotSeatsDis: {},
   selectedNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   selectedNoteText: { fontSize: 12, color: Colors.success, fontWeight: '500' },
-
   guestRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28 },
   guestBtn: {
     width: 40, height: 40, borderRadius: 20,
@@ -424,10 +406,12 @@ const styles = StyleSheet.create({
   guestNum: { fontSize: 42, fontWeight: '700', color: Colors.textPrimary, lineHeight: 46 },
   guestLabel: { fontSize: 12, color: Colors.textMuted },
   guestHint: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 10 },
-
   summaryCard: {
-    backgroundColor: Colors.surfaceWarm, borderRadius: 14, padding: 18,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceWarm,
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   summaryHeading: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: 14 },
   summRow: {
@@ -440,36 +424,304 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14 },
   totalLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
   totalValue: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
+});
 
-  bottomBar: {
-    position: 'absolute', 
-    bottom: 0, 
-    left: 0, 
-    right: 0,
-    backgroundColor: Colors.surface, 
-    paddingHorizontal: 20, 
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === 'web' ? 16 : 20,
-    borderTopWidth: 1, 
+// ─── Main Booking Screen ──────────────────────────────────────────────────────
+const BookingScreen = () => {
+  const navigation = useNavigation<any>();
+  const {
+    selectedRestaurant, selectedDate, selectedTime, selectedSeats,
+    setSelectedDate, setSelectedTime, setSelectedSeats, getAvailableSlots,
+  } = useBooking();
+
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const r = selectedRestaurant!;
+
+  useEffect(() => {
+    if (r) setSlots(getAvailableSlots(r.id, selectedDate));
+  }, [selectedDate, r]);
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const handleProceed = () => {
+    if (!selectedTime) {
+      Toast.show({ type: 'error', text1: 'Please select a time slot' }); 
+      setShowBookingModal(true);
+      return;
+    }
+    const slot = slots.find(s => s.time === selectedTime);
+    if (!slot || slot.availableSeats < selectedSeats) {
+      Toast.show({ type: 'error', text1: 'Not enough seats for selected time' }); 
+      return;
+    }
+    navigation.navigate('Payment', {
+      bookingData: {
+        restaurantName: r.name,
+        date: selectedDate.toDateString(),
+        time: selectedTime,
+        seats: selectedSeats,
+        totalAmount: selectedSeats * SEAT_PRICE,
+      },
+    });
+  };
+
+  const totalAmount = selectedSeats * SEAT_PRICE;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.bg} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Icon name="arrow-left" size={20} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={styles.headerTitle}>Make a Reservation</Text>
+          <Text style={styles.headerSub}>{r?.name}</Text>
+        </View>
+        <View style={{ width: 36 }} />
+      </View>
+
+      {/* Main Content */}
+      <View style={styles.content}>
+        {/* Booking Summary Card */}
+        <TouchableOpacity 
+          style={styles.summaryCard} 
+          onPress={() => setShowBookingModal(true)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Icon name="calendar-outline" size={20} color={Colors.gold} />
+              <View style={styles.summaryItemText}>
+                <Text style={styles.summaryLabel}>Date</Text>
+                <Text style={styles.summaryValue}>{formatDate(selectedDate)}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Icon name="clock-outline" size={20} color={Colors.gold} />
+              <View style={styles.summaryItemText}>
+                <Text style={styles.summaryLabel}>Time</Text>
+                <Text style={styles.summaryValue}>{selectedTime || 'Not selected'}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Icon name="account-group-outline" size={20} color={Colors.gold} />
+              <View style={styles.summaryItemText}>
+                <Text style={styles.summaryLabel}>Guests</Text>
+                <Text style={styles.summaryValue}>{selectedSeats} {selectedSeats === 1 ? 'person' : 'persons'}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.editHint}>
+            <Text style={styles.editHintText}>Tap to modify booking details</Text>
+            <Icon name="chevron-right" size={16} color={Colors.textMuted} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <Icon name="information-outline" size={20} color={Colors.gold} />
+          <Text style={styles.infoText}>
+            Your reservation will be held for 15 minutes. Please arrive on time.
+          </Text>
+        </View>
+      </View>
+
+      {/* Bottom Reserve Bar - Always Visible */}
+      <View style={styles.bottomBar}>
+        <View>
+          <Text style={styles.bottomLabel}>TOTAL AMOUNT</Text>
+          <Text style={styles.bottomAmount}>₹{totalAmount.toLocaleString()}</Text>
+          <Text style={styles.bottomSubtext}>{selectedSeats} × ₹{SEAT_PRICE}</Text>
+        </View>
+        <TouchableOpacity style={styles.reserveBtn} onPress={handleProceed} activeOpacity={0.85}>
+          <Text style={styles.reserveText}>RESERVE TABLE</Text>
+          <Icon name="arrow-right" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Booking Details Modal */}
+      <BookingDetailsModal
+        visible={showBookingModal}
+        restaurant={r}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        selectedSeats={selectedSeats}
+        slots={slots}
+        onDatePress={() => {
+          setShowBookingModal(false);
+          setTimeout(() => setShowCalendar(true), 300);
+        }}
+        onTimeSelect={(time) => setSelectedTime(time)}
+        onSeatsChange={(seats) => setSelectedSeats(seats)}
+        onClose={() => setShowBookingModal(false)}
+      />
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        visible={showCalendar}
+        currentDate={selectedDate}
+        onConfirm={date => { 
+          setShowCalendar(false); 
+          setSelectedDate(date); 
+          setSelectedTime('');
+          setTimeout(() => setShowBookingModal(true), 300);
+        }}
+        onCancel={() => {
+          setShowCalendar(false);
+          setTimeout(() => setShowBookingModal(true), 300);
+        }}
+      />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 8 : 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.bg,
+  },
+  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 1 },
+  
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  
+  summaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.md,
+    marginBottom: 16,
+  },
+  summaryRow: {
+    marginBottom: 16,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  summaryItemText: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  editHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 12,
+    marginTop: 4,
+    borderTopWidth: 1,
     borderTopColor: Colors.border,
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+  },
+  editHintText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  
+  infoCard: {
+    backgroundColor: Colors.surfaceWarm,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 19,
+  },
+  
+  bottomBar: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     ...Shadow.lg,
-    elevation: 10,
-    minHeight: 80,
-    ...(Platform.OS === 'web' && {
-      position: 'fixed' as any,
-      zIndex: 1000,
-    }),
   },
-  bottomLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: 2 },
-  bottomAmount: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
-  proceedBtn: {
-    backgroundColor: Colors.bgDark, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+  bottomLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  proceedText: { fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 1.5 },
+  bottomAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  bottomSubtext: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  reserveBtn: {
+    backgroundColor: Colors.bgDark,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    ...Shadow.md,
+  },
+  reserveText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 1.2,
+  },
 });
 
 export default BookingScreen;
