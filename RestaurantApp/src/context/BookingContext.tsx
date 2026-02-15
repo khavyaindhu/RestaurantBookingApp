@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import StorageService from '../services/StorageService';
 
 export interface Restaurant {
   id: string;
@@ -50,9 +51,10 @@ interface BookingContextType {
   setSelectedTime: (t: string) => void;
   setSelectedSeats: (n: number) => void;
   getAvailableSlots: (restaurantId: string, date: Date) => TimeSlot[];
-  confirmBooking: (userId: string, paymentStatus: 'paid' | 'skipped', amount: number) => Booking;
-  cancelBooking: (bookingId: string) => void;
+  confirmBooking: (userId: string, paymentStatus: 'pending' | 'paid' | 'skipped', amount: number) => Promise<Booking | null>;
+  cancelBooking: (bookingId: string) => Promise<void>;
   getUserBookings: (userId: string) => Booking[];
+  refreshBookings: () => Promise<void>;
 }
 
 // Mock restaurant data
@@ -134,9 +136,6 @@ const MOCK_RESTAURANTS: Restaurant[] = [
   },
 ];
 
-// Track bookings in memory (replace with AsyncStorage or API in production)
-let ALL_BOOKINGS: Booking[] = [];
-
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export const BookingProvider = ({ children }: { children: ReactNode }) => {
@@ -146,6 +145,48 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedSeats, setSelectedSeats] = useState<number>(2);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load all bookings from AsyncStorage on mount
+  useEffect(() => {
+    loadBookingsFromStorage();
+  }, []);
+
+  const loadBookingsFromStorage = async () => {
+    try {
+      console.log('📚 Loading bookings from AsyncStorage...');
+      const storedBookings = await StorageService.getAllBookings();
+      console.log('✅ Loaded bookings:', storedBookings);
+      
+      // Convert StorageService format to Booking format
+      const formattedBookings: Booking[] = storedBookings.map(b => ({
+        id: b.id,
+        restaurantId: b.restaurantId,
+        restaurantName: b.restaurantName,
+        restaurantImage: restaurants.find(r => r.id === b.restaurantId)?.image || '',
+        userId: b.userId,
+        date: b.date,
+        time: b.time,
+        seats: b.seats,
+        totalAmount: b.totalAmount,
+        paymentStatus: b.paymentStatus === 'paid' ? 'paid' : 'skipped',
+        bookingStatus: b.bookingStatus,
+        confirmationCode: b.confirmationCode,
+        createdAt: new Date().toISOString(),
+      }));
+
+      setBookings(formattedBookings);
+    } catch (error) {
+      console.error('❌ Error loading bookings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshBookings = async () => {
+    console.log('🔄 Refreshing bookings...');
+    await loadBookingsFromStorage();
+  };
 
   const getAvailableSlots = (restaurantId: string, date: Date): TimeSlot[] => {
     const restaurant = restaurants.find(r => r.id === restaurantId);
@@ -160,7 +201,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
 
     for (let h = openHour; h < closeHour; h += 1) {
       const timeStr = `${h.toString().padStart(2, '0')}:00`;
-      const bookedSeats = ALL_BOOKINGS
+      const bookedSeats = bookings
         .filter(b => b.restaurantId === restaurantId && b.date === dateStr && b.time === timeStr && b.bookingStatus !== 'cancelled')
         .reduce((sum, b) => sum + b.seats, 0);
 
@@ -174,37 +215,99 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
     return slots;
   };
 
-  const confirmBooking = (userId: string, paymentStatus: 'paid' | 'skipped', amount: number): Booking => {
-    const code = 'RES' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newBooking: Booking = {
-      id: String(Date.now()),
-      restaurantId: selectedRestaurant!.id,
-      restaurantName: selectedRestaurant!.name,
-      restaurantImage: selectedRestaurant!.image,
-      userId,
-      date: selectedDate.toDateString(),
-      time: selectedTime,
-      seats: selectedSeats,
-      totalAmount: amount,
-      paymentStatus,
-      bookingStatus: 'confirmed',
-      confirmationCode: code,
-      createdAt: new Date().toISOString(),
-    };
-    ALL_BOOKINGS.push(newBooking);
-    setBookings(prev => [newBooking, ...prev]);
-    return newBooking;
+  const confirmBooking = async (
+    userId: string, 
+    paymentStatus: 'pending' | 'paid' | 'skipped', 
+    amount: number
+  ): Promise<Booking | null> => {
+    try {
+      console.log('💾 Creating new booking...');
+      
+      if (!selectedRestaurant) {
+        console.error('❌ No restaurant selected');
+        return null;
+      }
+
+      const code = 'RES' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newBooking: Booking = {
+        id: String(Date.now()),
+        restaurantId: selectedRestaurant.id,
+        restaurantName: selectedRestaurant.name,
+        restaurantImage: selectedRestaurant.image,
+        userId,
+        date: selectedDate.toDateString(),
+        time: selectedTime,
+        seats: selectedSeats,
+        totalAmount: amount,
+        paymentStatus,
+        bookingStatus: 'confirmed',
+        confirmationCode: code,
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log('📝 New booking:', newBooking);
+
+      // Save to AsyncStorage
+      const success = await StorageService.saveBooking({
+        id: newBooking.id,
+        userId: newBooking.userId,
+        restaurantId: newBooking.restaurantId,
+        restaurantName: newBooking.restaurantName,
+        date: newBooking.date,
+        time: newBooking.time,
+        seats: newBooking.seats,
+        totalAmount: newBooking.totalAmount,
+        confirmationCode: newBooking.confirmationCode,
+        bookingStatus: newBooking.bookingStatus,
+        paymentStatus: newBooking.paymentStatus,
+      });
+
+      if (success) {
+        // Update local state
+        setBookings(prev => [newBooking, ...prev]);
+        console.log('✅ Booking saved successfully');
+        return newBooking;
+      } else {
+        console.error('❌ Failed to save booking to storage');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error confirming booking:', error);
+      return null;
+    }
   };
 
-  const cancelBooking = (bookingId: string) => {
-    ALL_BOOKINGS = ALL_BOOKINGS.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' as const } : b);
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, bookingStatus: 'cancelled' as const } : b));
+  const cancelBooking = async (bookingId: string): Promise<void> => {
+    try {
+      console.log('🚫 Cancelling booking:', bookingId);
+
+      // Update in AsyncStorage
+      const success = await StorageService.cancelBooking(bookingId);
+
+      if (success) {
+        // Update local state
+        setBookings(prev =>
+          prev.map(b =>
+            b.id === bookingId ? { ...b, bookingStatus: 'cancelled' as const } : b
+          )
+        );
+        console.log('✅ Booking cancelled successfully');
+      } else {
+        throw new Error('Failed to cancel booking in storage');
+      }
+    } catch (error) {
+      console.error('❌ Error cancelling booking:', error);
+      throw error;
+    }
   };
 
   const getUserBookings = (userId: string): Booking[] => {
-    return ALL_BOOKINGS.filter(b => b.userId === userId).sort(
+    console.log('👤 Getting bookings for user:', userId);
+    const userBookings = bookings.filter(b => b.userId === userId).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+    console.log('📋 User bookings:', userBookings);
+    return userBookings;
   };
 
   return (
@@ -223,6 +326,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
       confirmBooking,
       cancelBooking,
       getUserBookings,
+      refreshBookings,
     }}>
       {children}
     </BookingContext.Provider>

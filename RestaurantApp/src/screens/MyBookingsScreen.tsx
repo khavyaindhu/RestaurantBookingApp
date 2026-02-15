@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Platform, Alert,
 } from 'react-native';
@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { useBooking, Booking } from '../context/BookingContext';
 import { Colors, Shadow } from '../utils/theme';
+import { useFocusEffect } from '@react-navigation/native';
 
 declare const window: any;
 
@@ -74,15 +75,25 @@ const BookingCard = ({ booking, onCancel }: { booking: Booking; onCancel: () => 
 
 const MyBookingsScreen = () => {
   const { user } = useAuth();
-  const { getUserBookings, cancelBooking } = useBooking();
+  const { getUserBookings, cancelBooking, refreshBookings } = useBooking();
   const [refreshKey, setRefreshKey] = useState(0);
   
+  // Refresh bookings ONLY when screen comes into focus
+  // Remove refreshBookings from dependency array to prevent infinite loop
+  useFocusEffect(
+    useCallback(() => {
+      console.log('MyBookingsScreen focused - refreshing bookings');
+      refreshBookings();
+      setRefreshKey(prev => prev + 1);
+    }, []) // Empty dependency array - only refresh on focus
+  );
+
   const bookings = useMemo(() => {
     console.log('Fetching bookings for user:', user?.id);
     const userBookings = getUserBookings(user?.id || '');
     console.log('Current bookings:', userBookings);
     return userBookings;
-  }, [user?.id, refreshKey]);
+  }, [user?.id, refreshKey, getUserBookings]);
 
   const showConfirmDialog = (
     message: string,
@@ -124,7 +135,7 @@ const MyBookingsScreen = () => {
     }
   };
 
-  const handleCancel = useCallback((booking: Booking) => {
+  const handleCancel = useCallback(async (booking: Booking) => {
     console.log('handleCancel called for booking:', booking.id);
     
     const message = `Are you sure you want to cancel your table at ${booking.restaurantName} on ${booking.date} at ${booking.time}?`;
@@ -132,13 +143,16 @@ const MyBookingsScreen = () => {
     showConfirmDialog(
       message,
       // On confirm
-      () => {
+      async () => {
         console.log('User confirmed cancellation');
         try {
-          cancelBooking(booking.id);
+          await cancelBooking(booking.id);
           console.log('cancelBooking executed');
           
-          // Force refresh
+          // Refresh bookings from storage
+          await refreshBookings();
+          
+          // Force local refresh
           setRefreshKey(prev => prev + 1);
           
           Toast.show({ 
@@ -160,7 +174,7 @@ const MyBookingsScreen = () => {
         console.log('User cancelled the cancellation');
       }
     );
-  }, [cancelBooking]);
+  }, [cancelBooking, refreshBookings]);
 
   return (
     <View style={styles.container}>

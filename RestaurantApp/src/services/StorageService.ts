@@ -25,7 +25,7 @@ export interface StoredBooking {
   totalAmount: number;
   confirmationCode: string;
   bookingStatus: 'confirmed' | 'cancelled' | 'completed';
-  paymentStatus: 'paid' | 'skipped';
+  paymentStatus: 'pending' | 'paid' | 'skipped';
 }
 
 class StorageService {
