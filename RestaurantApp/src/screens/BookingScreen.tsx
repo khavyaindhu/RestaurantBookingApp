@@ -11,7 +11,6 @@ import { useBooking } from '../context/BookingContext';
 
 import { Colors, Shadow } from '../utils/theme';
 
-const SEAT_PRICE = 299;
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const DAY_LABELS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -296,7 +295,7 @@ const BookingDetailsModal = ({
                 { label: 'Date', val: formatDate(selectedDate) },
                 { label: 'Time', val: selectedTime || '—' },
                 { label: 'Guests', val: `${selectedSeats} ${selectedSeats === 1 ? 'person' : 'persons'}` },
-                { label: 'Rate', val: `₹${SEAT_PRICE} / seat` },
+                { label: 'Rate', val: `₹${restaurant?.pricePerSeat || 299} / seat` },
               ].map((item, i, arr) => (
                 <View key={item.label} style={[modalStyles.summRow, i === arr.length - 1 && modalStyles.summRowLast]}>
                   <Text style={modalStyles.summLabel}>{item.label}</Text>
@@ -305,7 +304,7 @@ const BookingDetailsModal = ({
               ))}
               <View style={modalStyles.totalRow}>
                 <Text style={modalStyles.totalLabel}>Total</Text>
-                <Text style={modalStyles.totalValue}>₹{(selectedSeats * SEAT_PRICE).toLocaleString()}</Text>
+                <Text style={modalStyles.totalValue}>₹{(selectedSeats * (restaurant?.pricePerSeat || 299)).toLocaleString()}</Text>
               </View>
             </View>
 
@@ -457,18 +456,25 @@ const BookingScreen = () => {
       Toast.show({ type: 'error', text1: 'Not enough seats for selected time' }); 
       return;
     }
+    
+    // Calculate total using restaurant's price per seat
+    const pricePerSeat = r?.pricePerSeat || 299;
+    const totalAmount = selectedSeats * pricePerSeat;
+    
     navigation.navigate('Payment', {
       bookingData: {
         restaurantName: r.name,
+        restaurantId: r.id,
         date: selectedDate.toDateString(),
         time: selectedTime,
         seats: selectedSeats,
-        totalAmount: selectedSeats * SEAT_PRICE,
+        pricePerSeat: pricePerSeat,
+        totalAmount: totalAmount,
       },
     });
   };
 
-  const totalAmount = selectedSeats * SEAT_PRICE;
+  const totalAmount = selectedSeats * (r?.pricePerSeat || 299);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -544,7 +550,7 @@ const BookingScreen = () => {
         <View>
           <Text style={styles.bottomLabel}>TOTAL AMOUNT</Text>
           <Text style={styles.bottomAmount}>₹{totalAmount.toLocaleString()}</Text>
-          <Text style={styles.bottomSubtext}>{selectedSeats} × ₹{SEAT_PRICE}</Text>
+          <Text style={styles.bottomSubtext}>{selectedSeats} × ₹{r?.pricePerSeat || 299}</Text>
         </View>
         <TouchableOpacity style={styles.reserveBtn} onPress={handleProceed} activeOpacity={0.85}>
           <Text style={styles.reserveText}>RESERVE TABLE</Text>

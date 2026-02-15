@@ -15,6 +15,7 @@ export interface Restaurant {
   closeTime: string;
   description: string;
   phone: string;
+  pricePerSeat: number; // ✨ NEW: Price varies per restaurant
 }
 
 export interface TimeSlot {
@@ -57,7 +58,7 @@ interface BookingContextType {
   refreshBookings: () => Promise<void>;
 }
 
-// Mock restaurant data
+// Mock restaurant data with VARYING PRICES
 const MOCK_RESTAURANTS: Restaurant[] = [
   {
     id: '1',
@@ -73,6 +74,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     closeTime: '23:00',
     description: 'Authentic Indian cuisine with a modern twist. Renowned for biryanis and curries.',
     phone: '+91 98765 43210',
+    pricePerSeat: 299, // ₹299 per seat
   },
   {
     id: '2',
@@ -88,6 +90,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     closeTime: '22:30',
     description: 'Premium Japanese dining featuring fresh sushi, sashimi, and tempura.',
     phone: '+91 97654 32109',
+    pricePerSeat: 599, // ₹599 per seat (Premium Japanese)
   },
   {
     id: '3',
@@ -103,6 +106,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     closeTime: '23:30',
     description: 'Classic Italian pastas, wood-fired pizzas, and fine wines in an elegant setting.',
     phone: '+91 96543 21098',
+    pricePerSeat: 399, // ₹399 per seat
   },
   {
     id: '4',
@@ -118,6 +122,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     closeTime: '22:00',
     description: 'Authentic Chinese flavors with dim sum, Peking duck, and wok specialties.',
     phone: '+91 95432 10987',
+    pricePerSeat: 249, // ₹249 per seat (More affordable)
   },
   {
     id: '5',
@@ -133,6 +138,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     closeTime: '23:00',
     description: 'Stunning rooftop dining with city views, premium steaks, and craft cocktails.',
     phone: '+91 94321 09876',
+    pricePerSeat: 799, // ₹799 per seat (Premium rooftop)
   },
 ];
 
