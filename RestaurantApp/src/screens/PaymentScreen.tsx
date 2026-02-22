@@ -9,6 +9,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
 import { Colors, Shadow } from '../utils/theme';
+import { sendBookingConfirmationEmail } from '../services/emailService';
 
 const PaymentScreen = () => {
   const navigation = useNavigation<any>();
@@ -20,54 +21,69 @@ const PaymentScreen = () => {
 
   const { bookingData } = route.params;
 
-  const handleConfirmBooking = async () => {
-    if (!user) {
-      Toast.show({ type: 'error', text1: 'Please login to continue' });
-      return;
-    }
+const handleConfirmBooking = async () => {
+  if (!user) {
+    Toast.show({ type: 'error', text1: 'Please login to continue' });
+    return;
+  }
 
-    setLoading(true);
-    try {
-      console.log('💳 Processing booking with payment:', selectedPayment);
+  setLoading(true);
+  try {
+    console.log('💳 Processing booking with payment:', selectedPayment);
 
-      // Create booking with persistence
-      const newBooking = await confirmBooking(
-        user.id,
-        selectedPayment,
-        bookingData.totalAmount
-      );
+    const newBooking = await confirmBooking(
+      user.id,
+      selectedPayment,
+      bookingData.totalAmount
+    );
 
-      if (newBooking) {
-        console.log('✅ Booking confirmed:', newBooking);
+    if (newBooking) {   // ✅ if block starts here
+      console.log('✅ Booking confirmed:', newBooking);
 
-        Toast.show({
-          type: 'success',
-          text1: 'Booking Confirmed!',
-          text2: `Confirmation code: ${newBooking.confirmationCode}`,
-          visibilityTime: 4000,
+      if (user.email) {
+        sendBookingConfirmationEmail({
+          toEmail: user.email,
+          userName: user.name || 'Guest',
+          restaurantName: bookingData.restaurantName,
+          date: bookingData.date,
+          time: bookingData.time,
+          seats: bookingData.seats,
+          totalAmount: bookingData.totalAmount,
+          confirmationCode: newBooking.confirmationCode,
+        }).then(sent => {
+          console.log(sent ? '📧 Email sent!' : '📧 Email failed silently');
         });
-
-        // Navigate to main tabs (bookings screen)
-        setTimeout(() => {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'MainTabs', params: { screen: 'Bookings' } }],
-          });
-        }, 1500);
-      } else {
-        throw new Error('Failed to create booking');
       }
-    } catch (error) {
-      console.error('❌ Error creating booking:', error);
+
       Toast.show({
-        type: 'error',
-        text1: 'Booking Failed',
-        text2: 'Please try again',
+        type: 'success',
+        text1: 'Booking Confirmed!',
+        text2: `Confirmation sent to ${user.email}`,
+        visibilityTime: 4000,
       });
-    } finally {
-      setLoading(false);
+
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],  // use the exact screen name from your navigator
+        });
+      }, 1500);
+
+    } else {   // ✅ else is directly attached to if(newBooking)
+      throw new Error('Failed to create booking');
     }
-  };
+
+  } catch (error) {   // ✅ catch belongs to try
+    console.error('❌ Error creating booking:', error);
+    Toast.show({
+      type: 'error',
+      text1: 'Booking Failed',
+      text2: 'Please try again',
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
