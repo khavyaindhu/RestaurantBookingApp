@@ -122,9 +122,10 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
 };
 
 const calStyles = StyleSheet.create({
-  overlay: {
+overlay: {
     flex: 1, backgroundColor: 'rgba(28,25,23,0.7)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
+    ...(Platform.OS === 'web' && { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0 }),
   },
   card: {
     backgroundColor: Colors.surface, borderRadius: 18, padding: 20,
@@ -317,16 +318,17 @@ const BookingDetailsModal = ({
 };
 
 const modalStyles = StyleSheet.create({
-  overlay: {
+overlay: {
     flex: 1,
     backgroundColor: 'rgba(28,25,23,0.5)',
     justifyContent: 'flex-end',
+    ...(Platform.OS === 'web' && { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0 }),
   },
   container: {
     backgroundColor: Colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: Platform.OS === 'web' ? '90vh' as any : '90%',
     ...Shadow.lg,
   },
   header: {
