@@ -328,7 +328,7 @@ overlay: {
     backgroundColor: Colors.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: Platform.OS === 'web' ? '90vh' as any : '90%',
+    height: Platform.OS === 'web' ? '90vh' as any : '90%',   // ← maxHeight → height
     ...Shadow.lg,
   },
   header: {
@@ -352,7 +352,7 @@ overlay: {
     alignItems: 'center',
   },
   scroll: {
-    flex: 1,
+    flexGrow: 1,           
     paddingHorizontal: 20,
     paddingTop: 20,
   },
