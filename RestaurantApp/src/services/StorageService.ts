@@ -148,7 +148,24 @@ class StorageService {
   }
 
   // ─── Clear All Data ─────────────────────────────────────────────────────────
+// Add this inside the StorageService class, in Booking Management section
 
+async getBookedSeats(restaurantId: string, date: string, time: string): Promise<number> {
+  try {
+    const bookings = await this.getAllBookings();
+    return bookings
+      .filter(b => 
+        b.restaurantId === restaurantId &&
+        b.date === date &&
+        b.time === time &&
+        b.bookingStatus !== 'cancelled'  // don't count cancelled bookings
+      )
+      .reduce((total, b) => total + b.seats, 0);
+  } catch (error) {
+    console.error('Error getting booked seats:', error);
+    return 0;
+  }
+}
   async clearAllData(): Promise<boolean> {
     try {
       await AsyncStorage.multiRemove([

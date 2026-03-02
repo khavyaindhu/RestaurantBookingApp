@@ -11,6 +11,13 @@ import { useBooking } from '../context/BookingContext';
 
 import { Colors, Shadow } from '../utils/theme';
 
+const formatDateKey = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 const DAY_LABELS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -465,8 +472,10 @@ const BookingScreen = () => {
   const r = selectedRestaurant!;
 
   useEffect(() => {
-    if (r) setSlots(getAvailableSlots(r.id, selectedDate));
-  }, [selectedDate, r]);
+  if (r) {
+    getAvailableSlots(r.id, selectedDate).then(setSlots);
+  }
+}, [selectedDate, r]);
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -491,7 +500,7 @@ const BookingScreen = () => {
       bookingData: {
         restaurantName: r.name,
         restaurantId: r.id,
-        date: selectedDate.toDateString(),
+        date: formatDateKey(selectedDate),
         time: selectedTime,
         seats: selectedSeats,
         pricePerSeat: pricePerSeat,

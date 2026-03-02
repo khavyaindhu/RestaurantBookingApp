@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useBooking, Restaurant } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Shadow } from '../utils/theme';
+import { useEffect } from 'react';
+
 
 const CUISINES = ['All', 'Indian', 'Japanese', 'Italian', 'Chinese', 'Continental'];
 
@@ -135,7 +137,7 @@ const HomeScreen = () => {
       {/* Count row */}
       <View style={styles.countRow}>
         <Text style={styles.countText}>{filtered.length} restaurants</Text>
-        <Text style={styles.countSub}>in Coimbatore</Text>
+        <Text style={styles.countSub}>in Mumbai</Text>
       </View>
 
       <FlatList

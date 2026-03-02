@@ -24,6 +24,8 @@ const RestaurantDetailScreen = () => {
     </View>
   );
 
+  
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />

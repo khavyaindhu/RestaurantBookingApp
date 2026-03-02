@@ -37,7 +37,7 @@ const SplashScreen = () => {
         </Animated.View>
       </Animated.View>
 
-      <Text style={styles.footer}>Coimbatore's Premier Table Booking</Text>
+      <Text style={styles.footer}>Mumbai's Premier Table Booking</Text>
     </View>
   );
 };

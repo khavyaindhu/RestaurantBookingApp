@@ -51,12 +51,14 @@ interface BookingContextType {
   setSelectedDate: (d: Date) => void;
   setSelectedTime: (t: string) => void;
   setSelectedSeats: (n: number) => void;
-  getAvailableSlots: (restaurantId: string, date: Date) => TimeSlot[];
+  getAvailableSlots: (restaurantId: string, date: Date) => Promise<TimeSlot[]>;
   confirmBooking: (userId: string, paymentStatus: 'pending' | 'paid' | 'skipped', amount: number) => Promise<Booking | null>;
   cancelBooking: (bookingId: string) => Promise<void>;
   getUserBookings: (userId: string) => Booking[];
   refreshBookings: () => Promise<void>;
 }
+
+
 
 // Mock restaurant data with VARYING PRICES
 const MOCK_RESTAURANTS: Restaurant[] = [
@@ -67,7 +69,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.8,
     priceRange: '₹₹₹',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
-    address: '42 MG Road, Coimbatore',
+    address: 'Sector 15, Navi Mumbai',
     totalSeats: 80,
     availableSeats: 45,
     openTime: '11:00',
@@ -83,7 +85,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.6,
     priceRange: '₹₹₹₹',
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400',
-    address: '8 Race Course Road, Coimbatore',
+    address: 'Palm Beach Road, Navi Mumbai',
     totalSeats: 60,
     availableSeats: 20,
     openTime: '12:00',
@@ -99,7 +101,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.7,
     priceRange: '₹₹₹',
     image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
-    address: '15 Avinashi Road, Coimbatore',
+    address: 'Panvel, Navi Mumbai',
     totalSeats: 70,
     availableSeats: 55,
     openTime: '11:30',
@@ -115,7 +117,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.5,
     priceRange: '₹₹',
     image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400',
-    address: '27 RS Puram, Coimbatore',
+    address: 'Kharghar, Navi Mumbai',
     totalSeats: 100,
     availableSeats: 75,
     openTime: '11:00',
@@ -131,7 +133,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.9,
     priceRange: '₹₹₹₹',
     image: 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=400',
-    address: '1 Town Hall Road, Coimbatore',
+    address: 'Panvel, Navi Mumbai', 
     totalSeats: 50,
     availableSeats: 10,
     openTime: '18:00',
@@ -141,6 +143,13 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     pricePerSeat: 799, // ₹799 per seat (Premium rooftop)
   },
 ];
+
+const formatDateKey = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
@@ -157,6 +166,19 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     loadBookingsFromStorage();
   }, []);
+  
+  // Add inside BookingProvider
+const getRestaurantAvailableSeats = async (restaurantId: string): Promise<number> => {
+  const restaurant = restaurants.find(r => r.id === restaurantId);
+  if (!restaurant) return 0;
+
+  const allBookings = await StorageService.getAllBookings();
+  const totalBooked = allBookings
+    .filter(b => b.restaurantId === restaurantId && b.bookingStatus !== 'cancelled')
+    .reduce((sum, b) => sum + b.seats, 0);
+
+  return Math.max(0, restaurant.totalSeats - totalBooked);
+};
 
   const loadBookingsFromStorage = async () => {
     try {
@@ -194,32 +216,39 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
     await loadBookingsFromStorage();
   };
 
-  const getAvailableSlots = (restaurantId: string, date: Date): TimeSlot[] => {
-    const restaurant = restaurants.find(r => r.id === restaurantId);
-    if (!restaurant) return [];
+ const getAvailableSlots = async (restaurantId: string, date: Date): Promise<TimeSlot[]> => {
+  const restaurant = restaurants.find(r => r.id === restaurantId);
+  if (!restaurant) return [];
 
-    const slots: TimeSlot[] = [];
-    const [openHour] = restaurant.openTime.split(':').map(Number);
-    const [closeHour] = restaurant.closeTime.split(':').map(Number);
+  const slots: TimeSlot[] = [];
+  const [openHour] = restaurant.openTime.split(':').map(Number);
+  const [closeHour] = restaurant.closeTime.split(':').map(Number);
+  const dateStr = formatDateKey(date);
 
-    // Count bookings for each slot on the given date
-    const dateStr = date.toDateString();
+  // ✅ Read LIVE from storage so all users see updated seats
+  const allBookings = await StorageService.getAllBookings();console.log('🔍 All bookings in storage:', JSON.stringify(allBookings));
+console.log('🔍 Looking for - restaurantId:', restaurantId, '| date:', dateStr);
 
-    for (let h = openHour; h < closeHour; h += 1) {
-      const timeStr = `${h.toString().padStart(2, '0')}:00`;
-      const bookedSeats = bookings
-        .filter(b => b.restaurantId === restaurantId && b.date === dateStr && b.time === timeStr && b.bookingStatus !== 'cancelled')
-        .reduce((sum, b) => sum + b.seats, 0);
+  for (let h = openHour; h < closeHour; h += 1) {
+    const timeStr = `${h.toString().padStart(2, '0')}:00`;
+    const bookedSeats = allBookings
+      .filter(b =>
+        b.restaurantId === restaurantId &&
+        b.date === dateStr &&
+        b.time === timeStr &&
+        b.bookingStatus !== 'cancelled'
+      )
+      .reduce((sum, b) => sum + b.seats, 0);
 
-      const available = restaurant.totalSeats - bookedSeats;
-      slots.push({
-        time: timeStr,
-        availableSeats: Math.max(0, available),
-        isAvailable: available > 0,
-      });
-    }
-    return slots;
-  };
+    const available = restaurant.totalSeats - bookedSeats;
+    slots.push({
+      time: timeStr,
+      availableSeats: Math.max(0, available),
+      isAvailable: available > 0,
+    });
+  }
+  return slots;
+};
 
   const confirmBooking = async (
     userId: string, 
@@ -241,7 +270,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
         restaurantName: selectedRestaurant.name,
         restaurantImage: selectedRestaurant.image,
         userId,
-        date: selectedDate.toDateString(),
+        date: formatDateKey(selectedDate),
         time: selectedTime,
         seats: selectedSeats,
         totalAmount: amount,
