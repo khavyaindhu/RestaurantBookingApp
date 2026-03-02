@@ -48,10 +48,20 @@ const CalendarModal = ({ visible, currentDate, onConfirm, onCancel }: CalendarPr
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const checkDisabled = (day: number) => {
-    const d = new Date(viewYear, viewMonth, day); d.setHours(0,0,0,0);
-    return d < today || d > maxDate;
-  };
+const checkDisabled = (day: number) => {
+  const now = new Date();
+  const d = new Date(viewYear, viewMonth, day);
+  d.setHours(0, 0, 0, 0);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  if (d < todayStart) return true;
+  if (d.getTime() === todayStart.getTime() && now.getHours() >= 22) return true;
+  if (d > maxDate) return true;
+
+  return false;
+};
   const checkSelected = (day: number) =>
     selected.getDate() === day &&
     selected.getMonth() === viewMonth &&
@@ -178,7 +188,21 @@ const BookingDetailsModal = ({
   visible, restaurant, selectedDate, selectedTime, selectedSeats,
   slots, onDatePress, onTimeSelect, onSeatsChange, onClose
 }: BookingModalProps) => {
-  
+
+  // ✅ ADD THIS HERE — it has access to selectedDate
+  const isSlotPast = (time: string): boolean => {
+    const now = new Date();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const selectedDay = new Date(selectedDate);
+    selectedDay.setHours(0, 0, 0, 0);
+
+    if (selectedDay.getTime() !== todayStart.getTime()) return false;
+
+    const hours = parseInt(time.split(':')[0]);
+    return hours <= now.getHours();
+  };
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -232,7 +256,7 @@ const BookingDetailsModal = ({
               <View style={modalStyles.slotsGrid}>
                 {slots.map(slot => {
                   const isSel = selectedTime === slot.time;
-                  const isFull = !slot.isAvailable;
+                   const isFull = !slot.isAvailable || isSlotPast(slot.time)
                   return (
                     <TouchableOpacity
                       key={slot.time}
