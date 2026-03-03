@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import StorageService from '../services/StorageService';
 
+import { Dimensions } from 'react-native';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ export interface Restaurant {
   rating: number;
   priceRange: string;
   image: string;
+  images: string[];
   address: string;
   totalSeats: number;
   availableSeats: number;
@@ -60,8 +63,9 @@ interface BookingContextType {
 
 
 
-// Mock restaurant data with VARYING PRICES
-const MOCK_RESTAURANTS: Restaurant[] = [
+// 🍽️ COMPLETE MOCK RESTAURANTS WITH IMAGE GALLERIES
+
+const MOCK_RESTAURANTS = [
   {
     id: '1',
     name: 'The Grand Spice',
@@ -69,14 +73,19 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.8,
     priceRange: '₹₹₹',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
+images: [
+  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+  'https://images.unsplash.com/photo-1585518419759-7fe2e0fbf8a6?w=800',
+  'https://images.unsplash.com/photo-1567337710282-00832b415979?w=800',
+],
     address: 'Sector 15, Navi Mumbai',
     totalSeats: 80,
     availableSeats: 45,
     openTime: '11:00',
     closeTime: '23:00',
-    description: 'Authentic Indian cuisine with a modern twist. Renowned for biryanis and curries.',
+    description: 'Authentic Indian cuisine with a modern twist. Renowned for biryanis and curries. Experience fine dining with traditional recipes prepared by award-winning chefs.',
     phone: '+91 98765 43210',
-    pricePerSeat: 299, // ₹299 per seat
+    pricePerSeat: 299,
   },
   {
     id: '2',
@@ -85,14 +94,19 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.6,
     priceRange: '₹₹₹₹',
     image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400',
+images: [
+  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
+  'https://images.unsplash.com/photo-1585518419759-7fe2e0fbf8a6?w=800',
+  'https://images.unsplash.com/photo-1611143669185-af224c5e3252?w=800',
+],
     address: 'Palm Beach Road, Navi Mumbai',
     totalSeats: 60,
     availableSeats: 20,
     openTime: '12:00',
     closeTime: '22:30',
-    description: 'Premium Japanese dining featuring fresh sushi, sashimi, and tempura.',
+    description: 'Premium Japanese dining featuring fresh sushi, sashimi, and tempura. Omakase experience with imported ingredients from Japan. Serene ambiance with traditional decor.',
     phone: '+91 97654 32109',
-    pricePerSeat: 599, // ₹599 per seat (Premium Japanese)
+    pricePerSeat: 599,
   },
   {
     id: '3',
@@ -101,14 +115,19 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.7,
     priceRange: '₹₹₹',
     image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
+images: [
+  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
+  'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800',
+],
     address: 'Panvel, Navi Mumbai',
     totalSeats: 70,
     availableSeats: 55,
     openTime: '11:30',
     closeTime: '23:30',
-    description: 'Classic Italian pastas, wood-fired pizzas, and fine wines in an elegant setting.',
+    description: 'Classic Italian pastas, wood-fired pizzas, and fine wines in an elegant setting. Chef sources authentic ingredients directly from Italy. Romantic atmosphere perfect for special occasions.',
     phone: '+91 96543 21098',
-    pricePerSeat: 399, // ₹399 per seat
+    pricePerSeat: 399,
   },
   {
     id: '4',
@@ -117,14 +136,19 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.5,
     priceRange: '₹₹',
     image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400',
+images: [
+  'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+  'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800',
+  'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800',
+],
     address: 'Kharghar, Navi Mumbai',
     totalSeats: 100,
     availableSeats: 75,
     openTime: '11:00',
     closeTime: '22:00',
-    description: 'Authentic Chinese flavors with dim sum, Peking duck, and wok specialties.',
+    description: 'Authentic Chinese flavors with dim sum, Peking duck, and wok specialties. Skilled wok masters bring traditional technique to every dish. Family-friendly atmosphere with spacious seating.',
     phone: '+91 95432 10987',
-    pricePerSeat: 249, // ₹249 per seat (More affordable)
+    pricePerSeat: 249,
   },
   {
     id: '5',
@@ -133,16 +157,23 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     rating: 4.9,
     priceRange: '₹₹₹₹',
     image: 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=400',
-    address: 'Panvel, Navi Mumbai', 
+images: [
+  'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=800',
+  'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=800',  // ✅ replaces broken 2nd
+  'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',  // ✅ replaces broken 3rd
+],
+    address: 'Panvel, Navi Mumbai',
     totalSeats: 50,
     availableSeats: 10,
     openTime: '18:00',
     closeTime: '23:00',
-    description: 'Stunning rooftop dining with city views, premium steaks, and craft cocktails.',
+    description: 'Stunning rooftop dining with panoramic city views, premium steaks, and craft cocktails. Award-winning sommelier curates wine selection. Exclusive venue for celebrations and special dinners.',
     phone: '+91 94321 09876',
-    pricePerSeat: 799, // ₹799 per seat (Premium rooftop)
+    pricePerSeat: 799,
   },
 ];
+
+export default MOCK_RESTAURANTS;
 
 const formatDateKey = (date: Date): string => {
   const y = date.getFullYear();
@@ -152,6 +183,7 @@ const formatDateKey = (date: Date): string => {
 };
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
+
 
 export const BookingProvider = ({ children }: { children: ReactNode }) => {
   const [restaurants] = useState<Restaurant[]>(MOCK_RESTAURANTS);
