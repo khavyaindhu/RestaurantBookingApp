@@ -13,7 +13,6 @@ export interface Restaurant {
   images: string[];
   address: string;
   totalSeats: number;
-  availableSeats: number;
   openTime: string;
   closeTime: string;
   description: string;
@@ -59,6 +58,7 @@ interface BookingContextType {
   cancelBooking: (bookingId: string) => Promise<void>;
   getUserBookings: (userId: string) => Booking[];
   refreshBookings: () => Promise<void>;
+    getLiveAvailableSeats: (restaurantId: string) => Promise<number>;
 }
 
 
@@ -80,7 +80,6 @@ images: [
 ],
     address: 'Sector 15, Navi Mumbai',
     totalSeats: 80,
-    availableSeats: 45,
     openTime: '11:00',
     closeTime: '23:00',
     description: 'Authentic Indian cuisine with a modern twist. Renowned for biryanis and curries. Experience fine dining with traditional recipes prepared by award-winning chefs.',
@@ -101,7 +100,6 @@ images: [
 ],
     address: 'Palm Beach Road, Navi Mumbai',
     totalSeats: 60,
-    availableSeats: 20,
     openTime: '12:00',
     closeTime: '22:30',
     description: 'Premium Japanese dining featuring fresh sushi, sashimi, and tempura. Omakase experience with imported ingredients from Japan. Serene ambiance with traditional decor.',
@@ -122,7 +120,6 @@ images: [
 ],
     address: 'Panvel, Navi Mumbai',
     totalSeats: 70,
-    availableSeats: 55,
     openTime: '11:30',
     closeTime: '23:30',
     description: 'Classic Italian pastas, wood-fired pizzas, and fine wines in an elegant setting. Chef sources authentic ingredients directly from Italy. Romantic atmosphere perfect for special occasions.',
@@ -143,7 +140,6 @@ images: [
 ],
     address: 'Kharghar, Navi Mumbai',
     totalSeats: 100,
-    availableSeats: 75,
     openTime: '11:00',
     closeTime: '22:00',
     description: 'Authentic Chinese flavors with dim sum, Peking duck, and wok specialties. Skilled wok masters bring traditional technique to every dish. Family-friendly atmosphere with spacious seating.',
@@ -164,7 +160,6 @@ images: [
 ],
     address: 'Panvel, Navi Mumbai',
     totalSeats: 50,
-    availableSeats: 10,
     openTime: '18:00',
     closeTime: '23:00',
     description: 'Stunning rooftop dining with panoramic city views, premium steaks, and craft cocktails. Award-winning sommelier curates wine selection. Exclusive venue for celebrations and special dinners.',
@@ -199,6 +194,20 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
     loadBookingsFromStorage();
   }, []);
   
+
+  const getLiveAvailableSeats = async (restaurantId: string): Promise<number> => {
+    const restaurant = restaurants.find(r => r.id === restaurantId);
+    if (!restaurant) return 0;
+
+    const allBookings = await StorageService.getAllBookings();
+    const totalBooked = allBookings
+      .filter(b => b.restaurantId === restaurantId && b.bookingStatus !== 'cancelled')
+      .reduce((sum, b) => sum + b.seats, 0);
+
+    return Math.max(0, restaurant.totalSeats - totalBooked);
+  };
+
+
   // Add inside BookingProvider
 const getRestaurantAvailableSeats = async (restaurantId: string): Promise<number> => {
   const restaurant = restaurants.find(r => r.id === restaurantId);
@@ -394,6 +403,7 @@ console.log('🔍 Looking for - restaurantId:', restaurantId, '| date:', dateStr
       cancelBooking,
       getUserBookings,
       refreshBookings,
+      getLiveAvailableSeats,
     }}>
       {children}
     </BookingContext.Provider>

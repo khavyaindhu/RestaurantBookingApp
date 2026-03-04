@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, Image, ScrollView, StatusBar,
@@ -8,8 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useBooking, Restaurant } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Shadow } from '../utils/theme';
-import { useEffect } from 'react';
-
+import { useFocusEffect } from '@react-navigation/native';
 
 const CUISINES = ['All', 'Indian', 'Japanese', 'Italian', 'Chinese', 'Continental'];
 
@@ -25,16 +24,23 @@ const SeatIndicator = ({ available, total }: { available: number; total: number 
   );
 };
 
-const RestaurantCard = ({ restaurant, onPress }: { restaurant: Restaurant; onPress: () => void }) => (
+// ✅ Fix 1: Added liveSeats prop to RestaurantCard
+const RestaurantCard = ({
+  restaurant,
+  liveSeats,
+  onPress,
+}: {
+  restaurant: Restaurant;
+  liveSeats: number;   // ✅ properly typed as number
+  onPress: () => void;
+}) => (
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.92}>
     <View style={styles.imageWrap}>
       <Image source={{ uri: restaurant.image }} style={styles.cardImage} resizeMode="cover" />
       <View style={styles.imageOverlay} />
-      {/* Cuisine tag on image */}
       <View style={styles.cuisineTag}>
         <Text style={styles.cuisineTagText}>{restaurant.cuisine.toUpperCase()}</Text>
       </View>
-      {/* Rating on image */}
       <View style={styles.ratingTag}>
         <Icon name="star" size={11} color="#FFD700" />
         <Text style={styles.ratingTagText}>{restaurant.rating}</Text>
@@ -56,7 +62,8 @@ const RestaurantCard = ({ restaurant, onPress }: { restaurant: Restaurant; onPre
       </View>
 
       <View style={styles.cardFooterRow}>
-        <SeatIndicator available={restaurant.availableSeats} total={restaurant.totalSeats} />
+        {/* ✅ Fix 2: Pass liveSeats (the number prop) into SeatIndicator */}
+        <SeatIndicator available={liveSeats} total={restaurant.totalSeats} />
         <TouchableOpacity style={styles.reserveBtn} onPress={onPress} activeOpacity={0.85}>
           <Text style={styles.reserveBtnText}>Reserve</Text>
           <Icon name="arrow-right" size={13} color={Colors.textInverse} />
@@ -67,14 +74,32 @@ const RestaurantCard = ({ restaurant, onPress }: { restaurant: Restaurant; onPre
 );
 
 const HomeScreen = () => {
-  const { restaurants, setSelectedRestaurant } = useBooking();
+  const { restaurants, setSelectedRestaurant, getLiveAvailableSeats } = useBooking();
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const [searchText, setSearchText] = useState('');
   const [selectedCuisine, setSelectedCuisine] = useState('All');
 
+  // ✅ Fix 3: useState is now INSIDE the component where it belongs
+  const [liveSeats, setLiveSeats] = useState<Record<string, number>>({});
+
+  // ✅ useFocusEffect so seats refresh every time user navigates back to this screen
+  useFocusEffect(
+    useCallback(() => {
+      const fetchAllSeats = async () => {
+        const results: Record<string, number> = {};
+        for (const r of restaurants) {
+          results[r.id] = await getLiveAvailableSeats(r.id);
+        }
+        setLiveSeats(results);
+      };
+      fetchAllSeats();
+    }, [restaurants, getLiveAvailableSeats])
+  );
+
   const filtered = restaurants.filter(r => {
-    const matchSearch = r.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    const matchSearch =
+      r.name.toLowerCase().includes(searchText.toLowerCase()) ||
       r.cuisine.toLowerCase().includes(searchText.toLowerCase());
     const matchCuisine = selectedCuisine === 'All' || r.cuisine === selectedCuisine;
     return matchSearch && matchCuisine;
@@ -120,7 +145,11 @@ const HomeScreen = () => {
       </View>
 
       {/* Cuisine Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
         {CUISINES.map(c => (
           <TouchableOpacity
             key={c}
@@ -143,7 +172,14 @@ const HomeScreen = () => {
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
-        renderItem={({ item }) => <RestaurantCard restaurant={item} onPress={() => handleSelect(item)} />}
+        renderItem={({ item }) => (
+          <RestaurantCard
+            restaurant={item}
+            // ✅ liveSeats[item.id] is a number; fallback to totalSeats while loading
+            liveSeats={liveSeats[item.id] ?? item.totalSeats}
+            onPress={() => handleSelect(item)}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
